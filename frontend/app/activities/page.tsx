@@ -9,7 +9,7 @@ import { formatDate, cn, categoryBadgeClass } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Activities",
-  description: "Sports, cultural events, academic activities, and more at [Institution Name].",
+  description: "Sports, cultural events, academic activities, and more at D T M N.",
 };
 
 async function getActivities() {

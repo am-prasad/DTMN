@@ -32,7 +32,7 @@ class Circular(Base, TimestampMixin):
     slug: Mapped[str] = mapped_column(String(450), nullable=False, unique=True, index=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     category: Mapped[CircularCategory] = mapped_column(
-        Enum(CircularCategory, name="circular_category"),
+        Enum(CircularCategory, native_enum=True),
         nullable=False,
         default=CircularCategory.GENERAL,
     )

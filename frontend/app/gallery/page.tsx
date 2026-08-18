@@ -8,7 +8,7 @@ import { api, getImageUrl } from "@/lib/api";
 
 export const metadata: Metadata = {
   title: "Gallery",
-  description: "Photo gallery of [Institution Name]: campus, events, sports, cultural activities, and more.",
+  description: "Photo gallery of D T M N: campus, events, sports, cultural activities, and more.",
 };
 
 async function getAlbums() {

@@ -8,7 +8,7 @@ import type { EventListItem } from "@/types";
 
 export const metadata: Metadata = {
   title: "Events",
-  description: "Upcoming and past events at [Institution Name]. Academic, cultural, and sports events.",
+  description: "Upcoming and past events at D T M N. Academic, cultural, and sports events.",
 };
 
 async function getUpcoming(): Promise<EventListItem[]> {

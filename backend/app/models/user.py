@@ -28,7 +28,7 @@ class User(Base, TimestampMixin):
     hashed_password: Mapped[str] = mapped_column(String(512), nullable=False)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(
-        Enum(UserRole, name="user_role"), nullable=False, default=UserRole.CONTENT_ADMIN
+        Enum(UserRole, native_enum=True), nullable=False, default=UserRole.CONTENT_ADMIN
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 

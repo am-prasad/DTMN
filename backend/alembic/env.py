@@ -5,7 +5,14 @@ def run_migrations_offline() -> None:
     from alembic import context
     from app.core.config import get_settings
     settings = get_settings()
-    context.configure(url=settings.DATABASE_URL.replace("+asyncpg", ""), target_metadata=Base.metadata, literal_binds=True, dialect_opts={"paramstyle": "named"})
+    # Strip async driver prefix for offline/sync mode
+    sync_url = settings.DATABASE_URL.replace("+aiomysql", "+pymysql")
+    context.configure(
+        url=sync_url,
+        target_metadata=Base.metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+    )
     with context.begin_transaction():
         context.run_migrations()
 
@@ -17,8 +24,8 @@ def run_migrations_online() -> None:
     import app.models  # noqa: F401 — ensure all models are loaded
 
     settings = get_settings()
-    # Use sync engine for Alembic
-    sync_url = settings.DATABASE_URL.replace("+asyncpg", "+psycopg2")
+    # Use sync pymysql driver for Alembic
+    sync_url = settings.DATABASE_URL.replace("+aiomysql", "+pymysql")
     connectable = create_engine(sync_url)
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=Base.metadata)

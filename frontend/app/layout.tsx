@@ -13,23 +13,23 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://example.com"),
   title: {
-    default: "[Institution Name] | [City]",
-    template: "%s | [Institution Name]",
+    default: "D T M N | [City]",
+    template: "%s | D T M N",
   },
   description:
-    "[Institution Name] offers quality education from Nursery through College in [City]. Admissions open for the current academic session.",
+    "D T M N offers quality education from Nursery through College in [City]. Admissions open for the current academic session.",
   keywords: [
-    "[Institution Name]",
+    "D T M N",
     "school",
     "college",
     "admissions",
-    "[City]",
+    "Bettadapura",
     "education",
   ],
   openGraph: {
     type: "website",
-    siteName: "[Institution Name]",
-    title: "[Institution Name]",
+    siteName: "D T M N",
+    title: "D T M N",
     description: "Quality education from Nursery through College.",
   },
   robots: {

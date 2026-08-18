@@ -4,14 +4,14 @@ import { PageHeader } from "@/components/common/PageHeader";
 export const metadata: Metadata = {
   title: "About Us",
   description:
-    "Learn about [Institution Name]'s history, vision, mission, values, and leadership. A legacy of educational excellence since [Year].",
+    "Learn about D T M N's history, vision, mission, values, and leadership. A legacy of educational excellence since [Year].",
 };
 
 export default function AboutPage() {
   return (
     <>
       <PageHeader
-        title="About [Institution Name]"
+        title="About D T M N"
         description="Our history, vision, and the values that guide everything we do."
         breadcrumbs={[{ label: "About" }]}
       />
@@ -23,7 +23,7 @@ export default function AboutPage() {
             <h2 id="history-heading" className="section-title">Our History</h2>
             <div className="mt-5 prose prose-neutral max-w-none text-neutral-600 leading-relaxed space-y-4">
               <p>
-                [Institution Name] was established in [Year] with a vision to provide quality 
+                D T M N was established in 2001 with a vision to provide quality 
                 education to the community. What began as a small school with a handful of 
                 students and dedicated teachers has grown, over the decades, into a comprehensive 
                 educational institution covering Nursery through College.
@@ -88,13 +88,13 @@ export default function AboutPage() {
                   Dear Students, Parents, and Well-wishers,
                 </p>
                 <p className="mb-4">
-                  Welcome to [Institution Name]. It is my privilege to lead this institution, 
+                  Welcome to D T M N. It is my privilege to lead this institution, 
                   and I am deeply proud of our community's commitment to educational excellence 
                   and holistic development. We believe that every student possesses unique 
                   potential, and it is our responsibility to help each one discover and develop it.
                 </p>
                 <p className="mb-4">
-                  Education at [Institution Name] goes beyond textbooks and examinations. 
+                  Education at D T M N goes beyond textbooks and examinations. 
                   We strive to develop critical thinkers, responsible citizens, and confident 
                   individuals who are prepared for the challenges and opportunities that lie ahead.
                 </p>
@@ -108,7 +108,7 @@ export default function AboutPage() {
                 </div>
                 <div>
                   <div className="font-semibold text-neutral-900">[Principal Name]</div>
-                  <div className="text-sm text-neutral-500">Principal, [Institution Name]</div>
+                  <div className="text-sm text-neutral-500">Principal, D T M N</div>
                 </div>
               </footer>
             </div>

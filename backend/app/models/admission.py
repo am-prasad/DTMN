@@ -51,7 +51,7 @@ class AdmissionEnquiry(Base, TimestampMixin):
     section: Mapped[str] = mapped_column(String(50), nullable=False)
     message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[EnquiryStatus] = mapped_column(
-        Enum(EnquiryStatus, name="enquiry_status"),
+        Enum(EnquiryStatus, native_enum=True),
         nullable=False,
         default=EnquiryStatus.NEW,
     )

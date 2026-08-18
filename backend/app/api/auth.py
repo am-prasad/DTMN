@@ -3,11 +3,11 @@ Authentication API — login, MFA, token refresh, logout, password change.
 
 Rate limiting is applied to all sensitive endpoints.
 """
-from __future__ import annotations
 
+from app.schemas.auth import LoginRequest, TokenResponse
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status,Body
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -83,7 +83,7 @@ def _clear_auth_cookies(response: Response) -> None:
 async def login(
     request: Request,
     response: Response,
-    body: LoginRequest,
+    body: LoginRequest = Body(...),
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
     """Login with email + password. Returns tokens in httpOnly cookies."""

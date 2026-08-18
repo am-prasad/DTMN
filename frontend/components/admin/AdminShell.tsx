@@ -66,7 +66,7 @@ export default function AdminShell({ children, title }: AdminShellProps) {
         </div>
         <div className="min-w-0">
           <div className="text-xs font-bold text-neutral-900 leading-tight truncate">
-            [Institution Name]
+            D T M N
           </div>
           <div className="text-[10px] text-neutral-400">Admin Portal</div>
         </div>

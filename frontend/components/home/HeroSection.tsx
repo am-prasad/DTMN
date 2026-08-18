@@ -32,7 +32,7 @@ export function HeroSection() {
             id="hero-heading"
             className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight text-balance"
           >
-            [Institution Name]
+            D T M N
           </h1>
 
           {/* Tagline */}
@@ -42,7 +42,7 @@ export function HeroSection() {
 
           {/* Introduction */}
           <p className="mt-5 text-base text-blue-100 leading-relaxed max-w-2xl">
-            [Institution Name] has been dedicated to quality education since [Year]. 
+            D T M N has been dedicated to quality education since [Year]. 
             We nurture students across Nursery, Primary, High School, and College — 
             providing a supportive environment where every student can achieve their potential.
           </p>

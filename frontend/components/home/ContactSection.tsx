@@ -78,7 +78,7 @@ export function ContactSection() {
           {/* Map — OpenStreetMap embed, no API key required */}
           <div className="rounded-card overflow-hidden border border-neutral-200 h-80 lg:h-auto">
             <iframe
-              title="[Institution Name] location map"
+              title="D T M N location map"
               src="https://www.openstreetmap.org/export/embed.html?bbox=0%2C0%2C0%2C0&layer=mapnik"
               className="w-full h-full border-0"
               loading="lazy"

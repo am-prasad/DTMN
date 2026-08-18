@@ -33,7 +33,7 @@ export default function Footer() {
               <div className="w-9 h-9 bg-accent rounded flex items-center justify-center flex-shrink-0">
                 <GraduationCap className="h-5 w-5 text-white" />
               </div>
-              <span className="font-bold text-white text-base leading-tight">[Institution Name]</span>
+              <span className="font-bold text-white text-base leading-tight">D T M N</span>
             </div>
             <p className="text-sm text-blue-200 leading-relaxed mb-4">
               [Inspiring Minds, Building Futures]
@@ -131,7 +131,7 @@ export default function Footer() {
       <div className="border-t border-primary-700">
         <div className="container-site py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-blue-300">
           <p>
-            &copy; {year} [Institution Name]. All rights reserved.
+            &copy; {2026} D T M N. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
             <Link href="/admin/login" className="hover:text-white transition-colors">

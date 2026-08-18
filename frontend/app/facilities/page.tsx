@@ -6,7 +6,7 @@ import type { Facility } from "@/types";
 
 export const metadata: Metadata = {
   title: "Facilities",
-  description: "Explore the facilities at [Institution Name]: classrooms, laboratories, library, sports grounds, and more.",
+  description: "Explore the facilities at D T M N: classrooms, laboratories, library, sports grounds, and more.",
 };
 
 async function getFacilities(): Promise<Facility[]> {

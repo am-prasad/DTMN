@@ -27,7 +27,7 @@ class Department(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     section: Mapped[AcademicSectionSlug] = mapped_column(
-        Enum(AcademicSectionSlug, name="academic_section_slug"), nullable=False
+        Enum(AcademicSectionSlug, native_enum=True), nullable=False
     )
 
     faculty: Mapped[list["Faculty"]] = relationship("Faculty", back_populates="department")
@@ -47,7 +47,7 @@ class Faculty(Base, TimestampMixin):
     institutional_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     section: Mapped[AcademicSectionSlug] = mapped_column(
-        Enum(AcademicSectionSlug, name="academic_section_slug", create_constraint=False),
+        Enum(AcademicSectionSlug, native_enum=True),
         nullable=False,
     )
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

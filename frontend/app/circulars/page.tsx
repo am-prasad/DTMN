@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 
 export const metadata: Metadata = {
   title: "Circulars & Notices",
-  description: "Official circulars, notices, and announcements from [Institution Name]. Download official documents.",
+  description: "Official circulars, notices, and announcements from D T M N. Download official documents.",
 };
 
 const CATEGORIES = [

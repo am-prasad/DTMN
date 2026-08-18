@@ -15,7 +15,7 @@ export function InstitutionOverview() {
             />
             <div className="mt-5 space-y-4 text-neutral-600 leading-relaxed">
               <p>
-                [Institution Name] has been dedicated to quality education since [Year]. 
+                D T M N has been dedicated to quality education since [Year]. 
                 What began as a small neighbourhood school has grown into a comprehensive 
                 educational institution serving students from Nursery through College.
               </p>

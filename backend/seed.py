@@ -17,7 +17,9 @@ from datetime import date, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import get_settings
+from app.core.database import Base
 from app.core.security import hash_password
+import app.models  # noqa: F401 — ensure all models are registered on Base.metadata
 from app.models.academic_section import AcademicSection
 from app.models.activity import Activity, ActivityCategory
 from app.models.admission import AdmissionInfo
@@ -253,6 +255,13 @@ async def seed(db: AsyncSession) -> None:
 
 async def main() -> None:
     engine = create_async_engine(settings.DATABASE_URL, echo=False)
+    
+    # Ensure all tables exist
+    async with engine.begin() as conn:
+        print("🔨 Creating database tables if they do not exist...")
+        await conn.run_sync(Base.metadata.create_all)
+        print("✅ Tables initialized.")
+
     AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with AsyncSessionLocal() as session:
         await seed(session)
