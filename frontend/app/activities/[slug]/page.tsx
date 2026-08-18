@@ -10,9 +10,6 @@ import type { Activity } from "@/types";
 
 interface Props { params: { slug: string } }
 
-async function getActivities() {
-  try { return await api.activities.list({ page_size: 20 } as { page_size: number }); } catch { return []; }
-}
 async function getActivity(slug: string): Promise<Activity | null> {
   try { return await api.activities.get(slug); } catch { return null; }
 }
