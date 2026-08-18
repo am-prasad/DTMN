@@ -26,11 +26,8 @@ export default function HomePage() {
       <QuickAccess />
       <InstitutionOverview />
       <AcademicSections />
-      {/* @ts-expect-error — Server Component */}
       <EventsPreview />
-      {/* @ts-expect-error — Server Component */}
       <CircularsPreview />
-      {/* @ts-expect-error — Server Component */}
       <ActivitiesPreview />
       <ContactSection />
     </>

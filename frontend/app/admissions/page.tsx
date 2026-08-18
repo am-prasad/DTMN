@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { CheckCircle } from "lucide-react";
+import type { AdmissionEnquiryForm } from "@/types";
 import { PageHeader } from "@/components/common/PageHeader";
 import { api } from "@/lib/api";
 
@@ -30,7 +31,16 @@ export default function AdmissionsPage() {
   const onSubmit = async (data: FormData) => {
     setError(null);
     try {
-      await api.admissions.submitEnquiry(data);
+      const payload: AdmissionEnquiryForm = {
+  student_name: data.student_name,
+  parent_name: data.parent_name,
+  email: data.email,
+  phone: data.phone,
+  section: data.section,
+  message: data.message,
+};
+
+await api.admissions.submitEnquiry(payload);
       setSubmitted(true);
     } catch (e: any) {
       setError(e?.detail || "Submission failed. Please try again.");

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { Send, CheckCircle } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { api } from "@/lib/api";
+import type { ContactForm } from "@/types";
 
 const schema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(255),
@@ -27,14 +28,26 @@ export default function ContactPage() {
   });
 
   const onSubmit = async (data: FormData) => {
-    setError(null);
-    try {
-      await api.contact.submit(data);
-      setSubmitted(true);
-    } catch (e: any) {
-      setError(e?.detail || "Failed to send your message. Please try again or contact us by phone.");
-    }
-  };
+  setError(null);
+
+  try {
+    const payload: ContactForm = {
+      name: data.name!,
+      email: data.email!,
+      phone: data.phone,
+      subject: data.subject!,
+      message: data.message!,
+    };
+
+    await api.contact.submit(payload);
+    setSubmitted(true);
+  } catch (e: any) {
+    setError(
+      e?.detail ||
+        "Failed to send your message. Please try again or contact us by phone."
+    );
+  }
+};
 
   return (
     <>

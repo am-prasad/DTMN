@@ -6,6 +6,7 @@ interface SectionTitleProps {
   subtitle?: string;
   center?: boolean;
   className?: string;
+    id?: string;
 }
 
 export function SectionTitle({
