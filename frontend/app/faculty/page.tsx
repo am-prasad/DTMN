@@ -19,7 +19,7 @@ const SECTIONS = [
 
 async function getAllFaculty(): Promise<FacultyMember[]> {
   try {
-    return await api.faculty.list({ page_size: 100 } as { page_size: number });
+    return await api.faculty.list();
   } catch {
     return [];
   }

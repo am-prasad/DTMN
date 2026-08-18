@@ -9,7 +9,7 @@ import type { Activity } from "@/types";
 
 async function getRecentActivities(): Promise<Activity[]> {
   try {
-    return await api.activities.list({ page_size: 3 } as { page_size: number });
+    return await api.activities.list();
   } catch {
     return [];
   }

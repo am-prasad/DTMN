@@ -13,7 +13,11 @@ export const metadata: Metadata = {
 };
 
 async function getActivities() {
-  try { return await api.activities.list({ page_size: 20 } as { page_size: number }); } catch { return []; }
+  try {
+    return await api.activities.list();
+  } catch {
+    return [];
+  }
 }
 
 export default async function ActivitiesPage() {
