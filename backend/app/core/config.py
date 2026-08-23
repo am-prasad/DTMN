@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     SMTP_USE_TLS: bool = True
 
     # Security
-    ALLOWED_ORIGINS: str = "http://localhost:3000","http://127.0.0.1:3000"
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000,https://dtmn-eta.vercel.app"
     CSRF_SECRET: str = ""
     MAX_LOGIN_ATTEMPTS: int = 5
     LOCKOUT_DURATION_MINUTES: int = 15

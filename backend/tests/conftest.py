@@ -12,8 +12,7 @@ from app.core.security import hash_password
 from app.main import app
 from app.models.user import User, UserRole
 
-# Use SQLite for tests (no PostgreSQL required)
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
 
 
 @pytest.fixture(scope="session")

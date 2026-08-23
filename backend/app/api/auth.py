@@ -49,8 +49,8 @@ limiter = Limiter(key_func=get_remote_address)
 
 REFRESH_COOKIE = "refresh_token"
 ACCESS_COOKIE = "access_token"
-COOKIE_SAMESITE = "strict"
-COOKIE_SECURE = settings.is_production
+COOKIE_SAMESITE = "none" if settings.is_production else "lax"
+COOKIE_SECURE = True if settings.is_production else False
 
 
 def _set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
