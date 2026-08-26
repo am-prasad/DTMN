@@ -138,9 +138,9 @@ export default function Footer() {
               Staff Login
             </Link>
             <span>·</span>
-            <Link href="/sitemap.xml" className="hover:text-white transition-colors">
+            <a href="/sitemap.xml" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
               Sitemap
-            </Link>
+            </a>
           </div>
         </div>
       </div>
