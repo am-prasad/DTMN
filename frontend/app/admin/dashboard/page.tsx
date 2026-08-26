@@ -1,4 +1,6 @@
-import type { Metadata } from "next";
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   CalendarDays,
@@ -9,20 +11,11 @@ import {
   Activity,
   TrendingUp,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 import { api } from "@/lib/api";
 import type { AdminStats } from "@/types";
-
-export const metadata: Metadata = { title: "Dashboard" };
-
-async function getStats(): Promise<AdminStats | null> {
-  try {
-    return await api.admin.stats();
-  } catch {
-    return null;
-  }
-}
 
 const STAT_CARDS = (stats: AdminStats) => [
   {
@@ -79,8 +72,32 @@ const QUICK_ACTIONS = [
   { href: "/admin/content", label: "Edit Site Content", icon: FileText },
 ];
 
-export default async function AdminDashboard() {
-  const stats = await getStats();
+export default function AdminDashboard() {
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await api.admin.stats();
+        if (mounted) {
+          setStats(data);
+          setError(null);
+        }
+      } catch (e: any) {
+        if (mounted) {
+          setError(e?.detail || "Could not load statistics.");
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <AdminShell title="Dashboard">
@@ -93,8 +110,16 @@ export default async function AdminDashboard() {
           </p>
         </div>
 
+        {/* Loading state */}
+        {loading && (
+          <div className="flex items-center justify-center py-12 text-neutral-400">
+            <Loader2 className="h-6 w-6 animate-spin mr-2 text-primary" />
+            <span className="text-sm font-medium">Loading statistics…</span>
+          </div>
+        )}
+
         {/* Stats */}
-        {stats && (
+        {!loading && stats && (
           <section aria-labelledby="stats-heading">
             <h3 id="stats-heading" className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">
               Content Overview
@@ -125,9 +150,9 @@ export default async function AdminDashboard() {
           </section>
         )}
 
-        {stats === null && (
+        {!loading && stats === null && (
           <div className="p-4 rounded-card bg-amber-50 border border-amber-200 text-sm text-amber-800">
-            Could not load statistics. The backend may be unavailable.
+            {error || "Could not load statistics. Please ensure you are logged in."}
           </div>
         )}
 

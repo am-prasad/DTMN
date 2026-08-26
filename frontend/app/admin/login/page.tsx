@@ -32,11 +32,11 @@ export default function AdminLoginPage() {
     setServerError(null);
     try {
       const result: any = await api.auth.login(data.email, data.password);
-      if (result?.mfa_required) {
+      if (result?.requires_mfa || result?.mfa_required) {
         setNeedsMfa(true);
         return;
       }
-      router.replace("/admin/dashboard");
+      window.location.href = "/admin/dashboard";
     } catch (e: any) {
       // 1. Capture the raw detail error property
       const rawDetail = e?.detail || "Invalid email or password.";
