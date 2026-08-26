@@ -1,6 +1,3 @@
-"""
-FastAPI application factory.
-"""
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -32,13 +29,24 @@ async def lifespan(app: FastAPI):
     logger.info("startup", environment=settings.ENVIRONMENT)
     # Ensure uploads directory exists
     Path(settings.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
+
+    
+    try:
+        from app.core.database import engine, Base
+        import app.models  # noqa: F401
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+            logger.info("database_tables_ready")
+    except Exception as e:
+        logger.error("database_startup_init_error", error=str(e))
+
     yield
     logger.info("shutdown")
 
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="[Institution Name] API",
+        title="DTMN API",
         version="1.0.0",
         # Disable docs in production
         docs_url="/api/docs" if not settings.is_production else None,
@@ -52,18 +60,18 @@ def create_app() -> FastAPI:
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     app.add_middleware(SlowAPIMiddleware)
 
-    # CORS — strictly limited to frontend origin
+    # Security headers (inner)
+    app.add_middleware(SecurityHeadersMiddleware)
+
+    # CORS — must be the outermost middleware (added last in FastAPI)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins_list,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-        expose_headers=["X-Total-Count"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+        allow_headers=["*"],
+        expose_headers=["*"],
     )
-
-    # Security headers
-    app.add_middleware(SecurityHeadersMiddleware)
 
     # API routes
     app.include_router(api_router)

@@ -73,6 +73,16 @@ class Settings(BaseSettings):
     def validate_database_url(cls, v: str) -> str:
         if not v:
             raise ValueError("DATABASE_URL must be set")
+        v = v.strip()
+        # Remove unsupported query parameters from Aiven/cloud providers
+        v = v.replace("?ssl-mode=REQUIRED", "").replace("&ssl-mode=REQUIRED", "")
+        # Auto-convert standard mysql:// prefix to async mysql+aiomysql://
+        if v.startswith("mysql://"):
+            v = "mysql+aiomysql://" + v[8:]
+        elif v.startswith("postgres://"):
+            v = "postgresql+asyncpg://" + v[11:]
+        elif v.startswith("postgresql://"):
+            v = "postgresql+asyncpg://" + v[13:]
         return v
 
     @field_validator("JWT_SECRET", "JWT_REFRESH_SECRET", mode="before")
@@ -84,7 +94,13 @@ class Settings(BaseSettings):
 
     @property
     def allowed_origins_list(self) -> list[str]:
-        return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
+        origins = [origin.strip().rstrip("/") for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
+        # Always include frontend if not present
+        if self.FRONTEND_URL:
+            frontend = self.FRONTEND_URL.strip().rstrip("/")
+            if frontend and frontend not in origins:
+                origins.append(frontend)
+        return origins
 
     @property
     def max_image_size_bytes(self) -> int:
