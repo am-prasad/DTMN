@@ -134,7 +134,7 @@ export default function Navbar() {
               <Phone className="h-3 w-3" />
               [Phone Number]
             </a>
-            <a href="mailto:[info@example.com]" className="flex items-center gap-1.5 hover:text-white transition-colors">
+            <a href="mailto:[info@dtmn.com]" className="flex items-center gap-1.5 hover:text-white transition-colors">
               <Mail className="h-3 w-3" />
               [info@example.com]
             </a>
@@ -159,7 +159,7 @@ export default function Navbar() {
               <div className="hidden sm:block">
                 <div className="text-sm font-bold text-primary leading-tight">D T M N</div>
                 <div className="text-[10px] text-neutral-500 leading-tight tracking-wide">
-                  Est. [Year]
+                  Est. 2001
                 </div>
               </div>
             </Link>

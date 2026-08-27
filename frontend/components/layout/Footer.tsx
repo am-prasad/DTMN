@@ -41,7 +41,7 @@ export default function Footer() {
             <div className="space-y-2.5 text-sm text-blue-200">
               <div className="flex items-start gap-2.5">
                 <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-accent-400" />
-                <span>[Full Address], [City]</span>
+                <span>Near KEB,Bettadapura, Piriyapattana, Mysuru-571102</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Phone className="h-4 w-4 flex-shrink-0 text-accent-400" />
