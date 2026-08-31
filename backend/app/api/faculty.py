@@ -14,6 +14,7 @@ from app.core.database import get_db
 from app.core.deps import require_content_admin
 from app.models.faculty import AcademicSectionSlug, Faculty
 from app.schemas.faculty import FacultyCreate, FacultyOut, FacultyUpdate
+from app.schemas.bulk import BulkActionRequest, BulkActionResponse
 
 router = APIRouter(tags=["Faculty"])
 
@@ -91,3 +92,24 @@ async def deactivate_faculty(faculty_id: int, db: AsyncSession = Depends(get_db)
     faculty.is_active = False
     await db.commit()
     return {"message": "Faculty member deactivated."}
+
+
+@router.post("/admin/faculty/bulk", response_model=BulkActionResponse, dependencies=[Depends(require_content_admin())])
+async def bulk_action_faculty(
+    body: BulkActionRequest,
+    db: AsyncSession = Depends(get_db),
+) -> BulkActionResponse:
+    """Bulk activate/deactivate/delete faculty members."""
+    allowed = {"activate", "deactivate", "delete"}
+    if body.action not in allowed:
+        raise HTTPException(status_code=400, detail=f"Action must be one of: {', '.join(allowed)}")
+    result = await db.execute(select(Faculty).where(Faculty.id.in_(body.ids)))
+    members = result.scalars().all()
+    for member in members:
+        if body.action == "activate":
+            member.is_active = True
+        elif body.action in ("deactivate", "delete"):
+            member.is_active = False
+    await db.commit()
+    return BulkActionResponse(affected=len(members), action=body.action, message=f"{len(members)} faculty member(s) updated.")
+

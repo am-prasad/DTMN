@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 export const metadata: Metadata = {
   title: "About Us",
   description:
-    "Learn about D T M N's history, vision, mission, values, and leadership. A legacy of educational excellence since [Year].",
+    "Learn about D T M N's history, vision, mission, values, and leadership. A legacy of educational excellence since 2001.",
 };
 
 export default function AboutPage() {
@@ -122,11 +122,11 @@ export default function AboutPage() {
             </p>
             <div className="mt-6 space-y-4">
               {[
-                { year: "[Year]", event: "Institution founded" },
-                { year: "[Year]", event: "Primary School section established" },
-                { year: "[Year]", event: "High School section added" },
-                { year: "[Year]", event: "College section inaugurated" },
-                { year: "[Year]", event: "[Additional milestone]" },
+                { year: "2001", event: "Institution founded" },
+                { year: "2006", event: "Primary School section established" },
+                { year: "2001", event: "High School section added" },
+                { year: "2018", event: "College section inaugurated" },
+                
               ].map((m) => (
                 <div key={m.year + m.event} className="flex gap-5 items-start">
                   <div className="w-16 text-sm font-bold text-primary flex-shrink-0 pt-0.5">

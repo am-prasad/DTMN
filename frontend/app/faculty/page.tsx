@@ -7,7 +7,7 @@ import type { FacultyMember } from "@/types";
 
 export const metadata: Metadata = {
   title: "Faculty",
-  description: "Meet the dedicated teaching faculty of D T M N. Browse by academic section and department.",
+  description: "Meet the dedicated teaching faculty of [Institution Name]. Browse by academic section and department.",
 };
 
 const SECTIONS = [

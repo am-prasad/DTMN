@@ -15,7 +15,7 @@ export function InstitutionOverview() {
             />
             <div className="mt-5 space-y-4 text-neutral-600 leading-relaxed">
               <p>
-                D T M N has been dedicated to quality education since [Year]. 
+                D T M N has been dedicated to quality education since 2001. 
                 What began as a small neighbourhood school has grown into a comprehensive 
                 educational institution serving students from Nursery through College.
               </p>
@@ -33,8 +33,8 @@ export function InstitutionOverview() {
             <div className="mt-7 flex flex-wrap gap-8 text-center">
               {[
                 { label: "Academic Sections", value: "4" },
-                { label: "Years of Service", value: "[N]+" },
-                { label: "Departments", value: "[N]+" },
+                { label: "Years of Service", value: "[25]+" },
+                { label: "Departments", value: "[3]+" },
               ].map((stat) => (
                 <div key={stat.label}>
                   <div className="text-2xl font-bold text-primary">{stat.value}</div>

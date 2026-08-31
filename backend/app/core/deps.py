@@ -66,10 +66,15 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 def require_role(*roles: UserRole):
     """
     Dependency factory: ensures the authenticated user has one of the required roles.
-    Usage: Depends(require_role(UserRole.SUPER_ADMIN, UserRole.CONTENT_ADMIN))
+    Handles both Enum instances and raw string values returned by some DB drivers (e.g. aiomysql).
     """
+    # Build a set of string values for comparison (handles str vs Enum mismatch)
+    role_values = {r.value if isinstance(r, UserRole) else str(r) for r in roles}
+
     async def _check_role(current_user: CurrentUser) -> User:
-        if current_user.role not in roles:
+        # Support both UserRole enum and raw string stored by aiomysql
+        user_role = current_user.role.value if isinstance(current_user.role, UserRole) else str(current_user.role)
+        if user_role not in role_values:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to perform this action.",

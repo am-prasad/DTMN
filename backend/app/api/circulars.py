@@ -16,6 +16,7 @@ from app.core.deps import CurrentUser, require_content_admin
 from app.models.circular import Circular, CircularCategory
 from app.schemas.circular import CircularCreate, CircularOut, CircularUpdate
 from app.schemas.common import MessageResponse
+from app.schemas.bulk import BulkActionRequest, BulkActionResponse
 from app.services.audit_service import AuditService
 from app.services.storage_service import get_storage
 
@@ -137,3 +138,30 @@ async def delete_circular(
     await db.commit()
     await AuditService(db).log("CIRCULAR_ARCHIVED", current_user, "circular", circular_id, request.client.host if request.client else None)
     return MessageResponse(message="Circular archived.")
+
+
+@router.post("/admin/circulars/bulk", response_model=BulkActionResponse, dependencies=[Depends(require_content_admin())])
+async def bulk_action_circulars(
+    body: BulkActionRequest,
+    request: Request,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+) -> BulkActionResponse:
+    """Bulk delete/publish/unpublish circulars."""
+    allowed = {"delete", "publish", "unpublish"}
+    if body.action not in allowed:
+        raise HTTPException(status_code=400, detail=f"Action must be one of: {', '.join(allowed)}")
+    result = await db.execute(select(Circular).where(Circular.id.in_(body.ids)))
+    circulars = result.scalars().all()
+    for circ in circulars:
+        if body.action == "delete":
+            circ.is_archived = True
+        elif body.action == "publish":
+            circ.is_published = True
+        elif body.action == "unpublish":
+            circ.is_published = False
+    await db.commit()
+    ip = request.client.host if request.client else None
+    await AuditService(db).log(f"CIRCULAR_BULK_{body.action.upper()}", current_user, "circular", None, ip, {"ids": body.ids})
+    return BulkActionResponse(affected=len(circulars), action=body.action, message=f"{len(circulars)} circular(s) updated.")
+

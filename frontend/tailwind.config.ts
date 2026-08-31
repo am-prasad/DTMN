@@ -9,7 +9,6 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Primary — deep navy blue (trustworthy, academic)
         primary: {
           50: "#f0f4ff",
           100: "#e0e8ff",

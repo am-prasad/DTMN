@@ -9,7 +9,7 @@ import { ActivitiesPreview } from "@/components/home/ActivitiesPreview";
 import { ContactSection } from "@/components/home/ContactSection";
 
 export const metadata: Metadata = {
-  title: "[Institution Name] — Official Website",
+  title: "[Institution Name]",
   description:
     "Welcome to [Institution Name]. We offer quality education from Nursery through College. Explore our academic sections, faculty, events, and admissions information.",
   openGraph: {

@@ -20,7 +20,7 @@ export function ContactSection() {
                 {
                   icon: MapPin,
                   label: "Address",
-                  content: "[Full Address]\n[City, State – PIN Code]",
+                  content: "Near KEB, Bettadapura\nPiriyapattana, Mysuru – 571102",
                 },
                 {
                   icon: Phone,
@@ -79,7 +79,7 @@ export function ContactSection() {
           <div className="rounded-card overflow-hidden border border-neutral-200 h-80 lg:h-auto">
             <iframe
               title="D T M N location map"
-              src="https://www.openstreetmap.org/export/embed.html?bbox=0%2C0%2C0%2C0&layer=mapnik"
+              src="https://www.google.com/maps?q=12.466286902005342,76.10076308042788&output=embed"
               className="w-full h-full border-0"
               loading="lazy"
               aria-label="Map showing institution location — update coordinates in the source before deployment"

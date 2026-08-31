@@ -23,7 +23,7 @@ export function HeroSection() {
           <div className="flex items-center gap-2 mb-5">
             <BookOpen className="h-4 w-4 text-accent-400" aria-hidden="true" />
             <span className="text-xs font-semibold tracking-widest uppercase text-accent-400">
-              Est. [Year]
+              Est. 2001
             </span>
           </div>
 
@@ -32,7 +32,7 @@ export function HeroSection() {
             id="hero-heading"
             className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight text-balance"
           >
-            D T M N
+            [Institution Name]
           </h1>
 
           {/* Tagline */}
@@ -42,7 +42,7 @@ export function HeroSection() {
 
           {/* Introduction */}
           <p className="mt-5 text-base text-blue-100 leading-relaxed max-w-2xl">
-            D T M N has been dedicated to quality education since [Year]. 
+            D T M N has been dedicated to quality education since 2001. 
             We nurture students across Nursery, Primary, High School, and College — 
             providing a supportive environment where every student can achieve their potential.
           </p>

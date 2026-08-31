@@ -1,13 +1,8 @@
-"""
-Pydantic schemas for circulars.
-"""
+﻿"""Pydantic schemas for circulars."""
 from __future__ import annotations
-
 from datetime import date
 from typing import Optional
-
-from pydantic import BaseModel, Field
-
+from pydantic import BaseModel, Field, model_validator
 from app.models.circular import CircularCategory
 
 
@@ -34,6 +29,14 @@ class CircularCreate(BaseModel):
     expires_at: Optional[date] = None
     is_published: bool = False
 
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_empty_strings(cls, values: dict) -> dict:
+        for f in ("description", "published_at", "expires_at"):
+            if isinstance(values.get(f), str) and values[f].strip() == "":
+                values[f] = None
+        return values
+
 
 class CircularUpdate(BaseModel):
     title: Optional[str] = Field(default=None, min_length=3, max_length=400)
@@ -43,3 +46,11 @@ class CircularUpdate(BaseModel):
     expires_at: Optional[date] = None
     is_published: Optional[bool] = None
     is_archived: Optional[bool] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_empty_strings(cls, values: dict) -> dict:
+        for f in ("title", "description", "published_at", "expires_at"):
+            if isinstance(values.get(f), str) and values[f].strip() == "":
+                values[f] = None
+        return values

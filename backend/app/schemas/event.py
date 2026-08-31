@@ -1,12 +1,8 @@
-"""
-Pydantic schemas for events.
-"""
+﻿"""Pydantic schemas for events."""
 from __future__ import annotations
-
 from datetime import date, time
 from typing import Optional
-
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from slugify import slugify
 
 
@@ -67,6 +63,17 @@ class EventCreate(BaseModel):
     category_id: Optional[int] = None
     is_published: bool = False
 
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_empty_strings(cls, values: dict) -> dict:
+        for f in ("description", "start_time", "end_time", "venue", "registration_url"):
+            if isinstance(values.get(f), str) and values[f].strip() == "":
+                values[f] = None
+        cat = values.get("category_id")
+        if cat is not None and cat != cat:
+            values["category_id"] = None
+        return values
+
     @field_validator("title")
     @classmethod
     def sanitize_title(cls, v: str) -> str:
@@ -84,3 +91,14 @@ class EventUpdate(BaseModel):
     category_id: Optional[int] = None
     is_published: Optional[bool] = None
     is_archived: Optional[bool] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_empty_strings(cls, values: dict) -> dict:
+        for f in ("title", "description", "start_time", "end_time", "venue", "registration_url"):
+            if isinstance(values.get(f), str) and values[f].strip() == "":
+                values[f] = None
+        cat = values.get("category_id")
+        if cat is not None and cat != cat:
+            values["category_id"] = None
+        return values
