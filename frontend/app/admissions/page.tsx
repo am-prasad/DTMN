@@ -49,7 +49,7 @@ await api.admissions.submitEnquiry(payload);
 
   return (
     <>
-      <PageHeader title="Admissions" description="Apply for admission to D T M N for the upcoming academic session." breadcrumbs={[{ label: "Admissions" }]} />
+      <PageHeader title="Admissions" description="Apply for admission to [Institution Name] for the upcoming academic session." breadcrumbs={[{ label: "Admissions" }]} />
 
       <div className="section bg-white">
         <div className="container-site max-w-4xl">

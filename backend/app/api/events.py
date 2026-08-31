@@ -18,6 +18,7 @@ from app.core.deps import CurrentUser, require_content_admin
 from app.models.event import Event, EventCategory
 from app.schemas.event import EventCreate, EventListOut, EventOut, EventUpdate
 from app.schemas.common import MessageResponse
+from app.schemas.bulk import BulkActionRequest, BulkActionResponse
 from app.services.audit_service import AuditService
 
 router = APIRouter(tags=["Events"])
@@ -142,3 +143,30 @@ async def delete_event(
     await db.commit()
     await AuditService(db).log("EVENT_ARCHIVED", current_user, "event", event_id, request.client.host if request.client else None)
     return MessageResponse(message="Event archived.")
+
+
+@router.post("/admin/events/bulk", response_model=BulkActionResponse, dependencies=[Depends(require_content_admin())])
+async def bulk_action_events(
+    body: BulkActionRequest,
+    request: Request,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+) -> BulkActionResponse:
+    """Bulk delete/publish/unpublish events."""
+    allowed = {"delete", "publish", "unpublish"}
+    if body.action not in allowed:
+        raise HTTPException(status_code=400, detail=f"Action must be one of: {', '.join(allowed)}")
+    result = await db.execute(select(Event).where(Event.id.in_(body.ids)))
+    events = result.scalars().all()
+    for ev in events:
+        if body.action == "delete":
+            ev.is_archived = True
+        elif body.action == "publish":
+            ev.is_published = True
+        elif body.action == "unpublish":
+            ev.is_published = False
+    await db.commit()
+    ip = request.client.host if request.client else None
+    await AuditService(db).log(f"EVENT_BULK_{body.action.upper()}", current_user, "event", None, ip, {"ids": body.ids})
+    return BulkActionResponse(affected=len(events), action=body.action, message=f"{len(events)} event(s) updated.")
+

@@ -11,13 +11,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://example.com"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ),
   title: {
-    default: "D T M N | [City]",
-    template: "%s | D T M N",
+    default: "[Institution Name] | [City]",
+    template: "%s | [Institution Name]",
   },
   description:
-    "D T M N offers quality education from Nursery through College in [City]. Admissions open for the current academic session.",
+    "[Institution Name] offers quality education from Nursery through College in [City]. Admissions open for the current academic session.",
   keywords: [
     "D T M N",
     "school",

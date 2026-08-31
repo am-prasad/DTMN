@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 export const metadata: Metadata = {
   title: {
     default: "Admin",
-    template: "%s | Admin — D T M N",
+    template: "%s | Admin — [Institution Name]",
   },
   robots: { index: false, follow: false },
 };

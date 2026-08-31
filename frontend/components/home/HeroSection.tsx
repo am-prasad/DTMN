@@ -32,7 +32,7 @@ export function HeroSection() {
             id="hero-heading"
             className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight text-balance"
           >
-            D T M N
+            [Institution Name]
           </h1>
 
           {/* Tagline */}

@@ -1,12 +1,8 @@
-"""
-Pydantic schemas for activities.
-"""
+﻿"""Pydantic schemas for activities."""
 from __future__ import annotations
-
 from datetime import date
 from typing import Optional
-
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, model_validator
 
 
 class ActivityCategoryOut(BaseModel):
@@ -57,13 +53,16 @@ class ActivityCreate(BaseModel):
     category_id: Optional[int] = None
     is_published: bool = False
 
-    # @field_validator("video_url")
+    @model_validator(mode="before")
     @classmethod
-    def validate_video_url(cls, v: Optional[str]) -> Optional[str]:
-        if v and v.strip():
-            if not v.startswith(("https://www.youtube.com/", "https://youtu.be/", "https://vimeo.com/")):
-                raise ValueError("Only YouTube and Vimeo video URLs are allowed.")
-        return v or None
+    def coerce_empty_strings(cls, values: dict) -> dict:
+        for f in ("description", "video_url", "activity_date"):
+            if isinstance(values.get(f), str) and values[f].strip() == "":
+                values[f] = None
+        cat = values.get("category_id")
+        if cat is not None and cat != cat:
+            values["category_id"] = None
+        return values
 
 
 class ActivityUpdate(BaseModel):
@@ -74,3 +73,14 @@ class ActivityUpdate(BaseModel):
     category_id: Optional[int] = None
     is_published: Optional[bool] = None
     is_archived: Optional[bool] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_empty_strings(cls, values: dict) -> dict:
+        for f in ("title", "description", "video_url", "activity_date"):
+            if isinstance(values.get(f), str) and values[f].strip() == "":
+                values[f] = None
+        cat = values.get("category_id")
+        if cat is not None and cat != cat:
+            values["category_id"] = None
+        return values

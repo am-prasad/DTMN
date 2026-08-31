@@ -9,11 +9,11 @@ import { ActivitiesPreview } from "@/components/home/ActivitiesPreview";
 import { ContactSection } from "@/components/home/ContactSection";
 
 export const metadata: Metadata = {
-  title: "DTMN Group of Institutions",
+  title: "[Institution Name]",
   description:
-    "Welcome to D T M N. We offer quality education from Nursery through College. Explore our academic sections, faculty, events, and admissions information.",
+    "Welcome to [Institution Name]. We offer quality education from Nursery through College. Explore our academic sections, faculty, events, and admissions information.",
   openGraph: {
-    title: "D T M N — Official Website",
+    title: "[Institution Name] — Official Website",
     description:
       "Quality education from Nursery through College in [City].",
   },

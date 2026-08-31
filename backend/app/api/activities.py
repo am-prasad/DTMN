@@ -16,6 +16,7 @@ from app.core.deps import CurrentUser, require_content_admin
 from app.models.activity import Activity, ActivityCategory
 from app.schemas.activity import ActivityCreate, ActivityListOut, ActivityOut, ActivityUpdate
 from app.schemas.common import MessageResponse
+from app.schemas.bulk import BulkActionRequest, BulkActionResponse
 from app.services.audit_service import AuditService
 
 router = APIRouter(tags=["Activities"])
@@ -127,3 +128,30 @@ async def delete_activity(
     await db.commit()
     await AuditService(db).log("ACTIVITY_ARCHIVED", current_user, "activity", activity_id, request.client.host if request.client else None)
     return MessageResponse(message="Activity archived.")
+
+
+@router.post("/admin/activities/bulk", response_model=BulkActionResponse, dependencies=[Depends(require_content_admin())])
+async def bulk_action_activities(
+    body: BulkActionRequest,
+    request: Request,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+) -> BulkActionResponse:
+    """Bulk delete/publish/unpublish activities."""
+    allowed = {"delete", "publish", "unpublish"}
+    if body.action not in allowed:
+        raise HTTPException(status_code=400, detail=f"Action must be one of: {', '.join(allowed)}")
+    result = await db.execute(select(Activity).where(Activity.id.in_(body.ids)))
+    activities = result.scalars().all()
+    for act in activities:
+        if body.action == "delete":
+            act.is_archived = True
+        elif body.action == "publish":
+            act.is_published = True
+        elif body.action == "unpublish":
+            act.is_published = False
+    await db.commit()
+    ip = request.client.host if request.client else None
+    await AuditService(db).log(f"ACTIVITY_BULK_{body.action.upper()}", current_user, "activity", None, ip, {"ids": body.ids})
+    return BulkActionResponse(affected=len(activities), action=body.action, message=f"{len(activities)} activity(ies) updated.")
+

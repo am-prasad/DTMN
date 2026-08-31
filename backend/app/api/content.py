@@ -24,6 +24,7 @@ from app.models.gallery import GalleryAlbum, GalleryImage
 from app.models.user import User, UserRole
 from app.repositories.user_repository import UserRepository
 from app.schemas.common import MessageResponse
+from app.schemas.bulk import BulkActionRequest, BulkActionResponse
 from app.schemas.content import (
     AcademicSectionOut,
     AcademicSectionUpdate,
@@ -265,9 +266,11 @@ async def list_enquiries(
 # ===========================================================================
 @router.get("/content", response_model=list[SiteContentOut])
 async def list_content(
+    response: Response,
     group: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
 ) -> list[SiteContentOut]:
+    response.headers["Cache-Control"] = "no-store"
     q = select(SiteContent)
     if group:
         q = q.where(SiteContent.group == group)
@@ -276,7 +279,8 @@ async def list_content(
 
 
 @router.get("/content/{key}", response_model=SiteContentOut)
-async def get_content(key: str, db: AsyncSession = Depends(get_db)) -> SiteContentOut:
+async def get_content(response: Response, key: str, db: AsyncSession = Depends(get_db)) -> SiteContentOut:
+    response.headers["Cache-Control"] = "no-store"
     result = await db.execute(select(SiteContent).where(SiteContent.key == key))
     item = result.scalar_one_or_none()
     if not item:
@@ -292,15 +296,25 @@ async def update_content(key: str, body: SiteContentUpdate, db: AsyncSession = D
         raise HTTPException(status_code=404, detail="Content key not found.")
     if body.value is not None:
         import bleach
-        EXTRA_TAGS = {"p", "br", "h2", "h3", "ul", "ol", "li", "strong", "em", "a"}
+        EXTRA_TAGS = {
+            "p", "br", "h1", "h2", "h3", "h4", "h5", "h6",
+            "ul", "ol", "li", "dl", "dt", "dd",
+            "strong", "b", "em", "i", "u", "s", "mark", "small", "sub", "sup",
+            "blockquote", "code", "pre",
+            "a", "span", "div",
+            "table", "thead", "tbody", "tfoot", "tr", "th", "td", "caption",
+            "img", "figure", "figcaption", "hr",
+        }
         allowed_tags = set(bleach.ALLOWED_TAGS) | EXTRA_TAGS
+        allowed_attrs = {
+            "a": ["href", "title", "target", "rel"],
+            "img": ["src", "alt", "title", "width", "height"],
+            "td": ["colspan", "rowspan"],
+            "th": ["colspan", "rowspan"],
+            "*": ["class", "id"],
+        }
         if item.content_type == "html":
-            item.value = bleach.clean(
-                body.value,
-                tags=allowed_tags,
-                attributes={"a": ["href"]},
-                strip=True,
-            )
+            item.value = bleach.clean(body.value, tags=allowed_tags, attributes=allowed_attrs, strip=True)
         else:
             item.value = body.value
     await db.commit()
@@ -327,29 +341,51 @@ async def submit_contact(body: ContactSubmissionCreate, request: Request, db: As
 # Admin stats (dashboard)
 # ===========================================================================
 @router.get("/admin/stats", dependencies=[Depends(require_content_admin())])
-async def get_stats(db: AsyncSession = Depends(get_db)) -> dict:
+async def get_stats(db: AsyncSession = Depends(get_db)):
     from datetime import date
+    from fastapi.responses import JSONResponse
     from app.models.event import Event
     from app.models.circular import Circular
     from app.models.activity import Activity
     from app.models.faculty import Faculty
 
     today = date.today()
-    stats = {}
-    for model, key in [
-        (Event, "total_events"),
-        (Circular, "published_circulars"),
-        (Activity, "total_activities"),
-        (Faculty, "total_faculty"),
-        (GalleryAlbum, "gallery_albums"),
-        (AdmissionEnquiry, "admission_enquiries"),
-    ]:
-        r = await db.execute(select(func.count()).select_from(model))
-        stats[key] = r.scalar() or 0
 
-    r = await db.execute(select(func.count()).select_from(Event).where(Event.event_date >= today, Event.is_published == True))
-    stats["upcoming_events"] = r.scalar() or 0
-    return stats
+    r = await db.execute(select(func.count()).select_from(Event).where(Event.is_archived == False))
+    total_events = r.scalar() or 0
+
+    r = await db.execute(select(func.count()).select_from(Circular).where(
+        Circular.is_published == True, Circular.is_archived == False))
+    published_circulars = r.scalar() or 0
+
+    r = await db.execute(select(func.count()).select_from(Activity).where(Activity.is_archived == False))
+    total_activities = r.scalar() or 0
+
+    r = await db.execute(select(func.count()).select_from(Faculty).where(Faculty.is_active == True))
+    total_faculty = r.scalar() or 0
+
+    r = await db.execute(select(func.count()).select_from(GalleryAlbum).where(GalleryAlbum.is_archived == False))
+    gallery_albums = r.scalar() or 0
+
+    r = await db.execute(select(func.count()).select_from(AdmissionEnquiry))
+    admission_enquiries = r.scalar() or 0
+
+    r = await db.execute(select(func.count()).select_from(Event).where(
+        Event.event_date >= today, Event.is_published == True, Event.is_archived == False))
+    upcoming_events = r.scalar() or 0
+
+    return JSONResponse(
+        content={
+            "total_events": total_events,
+            "published_circulars": published_circulars,
+            "total_activities": total_activities,
+            "total_faculty": total_faculty,
+            "gallery_albums": gallery_albums,
+            "admission_enquiries": admission_enquiries,
+            "upcoming_events": upcoming_events,
+        },
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 # ===========================================================================
@@ -361,7 +397,7 @@ async def list_users(db: AsyncSession = Depends(get_db)) -> list[UserOut]:
     return await repo.list_all()
 
 
-@router.post("/admin/users", response_model=UserOut, status_code=201)
+@router.post("/admin/users", response_model=UserOut, status_code=201, dependencies=[Depends(require_super_admin())])
 async def create_user(
     body: UserCreate,
     request: Request,
@@ -435,3 +471,28 @@ async def get_audit_logs(
         }
         for l in logs
     ]
+
+
+# ===========================================================================
+# Bulk Gallery Actions
+# ===========================================================================
+@router.post("/admin/gallery/bulk", response_model=BulkActionResponse, dependencies=[Depends(require_content_admin())])
+async def bulk_action_gallery(
+    body: BulkActionRequest,
+    db: AsyncSession = Depends(get_db),
+) -> BulkActionResponse:
+    """Bulk delete/publish/unpublish gallery albums."""
+    allowed = {"delete", "publish", "unpublish"}
+    if body.action not in allowed:
+        raise HTTPException(status_code=400, detail=f"Action must be one of: {', '.join(allowed)}")
+    result = await db.execute(select(GalleryAlbum).where(GalleryAlbum.id.in_(body.ids)))
+    albums = result.scalars().all()
+    for album in albums:
+        if body.action == "delete":
+            album.is_archived = True
+        elif body.action == "publish":
+            album.is_published = True
+        elif body.action == "unpublish":
+            album.is_published = False
+    await db.commit()
+    return BulkActionResponse(affected=len(albums), action=body.action, message=f"{len(albums)} album(s) updated.")

@@ -72,7 +72,7 @@ export default function AdminLoginPage() {
           <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
             <GraduationCap className="h-7 w-7 text-white" aria-hidden="true" />
           </div>
-          <h1 className="text-xl font-bold text-neutral-900">D T M N</h1>
+          <h1 className="text-xl font-bold text-neutral-900">[Institution Name]</h1>
           <p className="text-sm text-neutral-500 mt-1">Staff Administration Portal</p>
         </div>
 

@@ -1,12 +1,7 @@
-"""
-Pydantic schemas for faculty.
-"""
+﻿"""Pydantic schemas for faculty."""
 from __future__ import annotations
-
 from typing import Optional
-
-from pydantic import BaseModel, EmailStr, Field
-
+from pydantic import BaseModel, EmailStr, Field, model_validator
 from app.models.faculty import AcademicSectionSlug
 
 
@@ -45,6 +40,18 @@ class FacultyCreate(BaseModel):
     sort_order: int = 0
     is_active: bool = True
 
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_empty_strings(cls, values: dict) -> dict:
+        for f in ("qualification", "bio", "institutional_email"):
+            if isinstance(values.get(f), str) and values[f].strip() == "":
+                values[f] = None
+        exp = values.get("experience_years")
+        if exp is not None:
+            if isinstance(exp, float):
+                values["experience_years"] = None if exp != exp else int(exp)
+        return values
+
 
 class FacultyUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=2, max_length=255)
@@ -57,3 +64,15 @@ class FacultyUpdate(BaseModel):
     department_id: Optional[int] = None
     is_active: Optional[bool] = None
     sort_order: Optional[int] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_empty_strings(cls, values: dict) -> dict:
+        for f in ("name", "designation", "qualification", "bio", "institutional_email"):
+            if isinstance(values.get(f), str) and values[f].strip() == "":
+                values[f] = None
+        exp = values.get("experience_years")
+        if exp is not None:
+            if isinstance(exp, float):
+                values["experience_years"] = None if exp != exp else int(exp)
+        return values

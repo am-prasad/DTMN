@@ -128,7 +128,7 @@ export default function Navbar() {
       {/* Top info bar */}
       <div className="hidden lg:block bg-primary-900 text-blue-200 text-xs">
         <div className="container-site flex items-center justify-between py-1.5">
-          <span className="font-medium text-white">D T M N</span>
+          <span className="font-medium text-white">[Institution Name]</span>
           <div className="flex items-center gap-6">
             <a href="tel:[Phone Number]" className="flex items-center gap-1.5 hover:text-white transition-colors">
               <Phone className="h-3 w-3" />
@@ -157,7 +157,7 @@ export default function Navbar() {
                 <GraduationCap className="h-5 w-5 text-white" />
               </div>
               <div className="hidden sm:block">
-                <div className="text-sm font-bold text-primary leading-tight">D T M N</div>
+                <div className="text-sm font-bold text-primary leading-tight">[Institution Name]</div>
                 <div className="text-[10px] text-neutral-500 leading-tight tracking-wide">
                   Est. 2001
                 </div>
