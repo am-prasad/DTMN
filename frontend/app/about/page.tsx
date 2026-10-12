@@ -35,7 +35,7 @@ export default function AboutPage() {
                 is essential to student success.
               </p>
               <p className="text-sm italic text-neutral-400">
-                [This section should be updated with the institution's actual history.]
+                [This section should be updated with the institution&apos;s actual history.]
               </p>
             </div>
           </section>
@@ -81,7 +81,7 @@ export default function AboutPage() {
 
           {/* Principal's Message */}
           <section className="mb-14" aria-labelledby="principal-heading">
-            <h2 id="principal-heading" className="section-title">Principal's Message</h2>
+            <h2 id="principal-heading" className="section-title">Principal&apos;s Message</h2>
             <div className="mt-6 bg-neutral-50 border border-neutral-200 rounded-card p-7">
               <blockquote className="text-neutral-700 leading-relaxed italic border-l-4 border-accent-400 pl-5">
                 <p className="mb-4">
@@ -89,7 +89,7 @@ export default function AboutPage() {
                 </p>
                 <p className="mb-4">
                   Welcome to D T M N. It is my privilege to lead this institution, 
-                  and I am deeply proud of our community's commitment to educational excellence 
+                  and I am deeply proud of our community&apos;s commitment to educational excellence 
                   and holistic development. We believe that every student possesses unique 
                   potential, and it is our responsibility to help each one discover and develop it.
                 </p>
@@ -118,7 +118,7 @@ export default function AboutPage() {
           <section aria-labelledby="milestones-heading">
             <h2 id="milestones-heading" className="section-title">Key Milestones</h2>
             <p className="text-sm text-neutral-400 mt-2 italic">
-              [Update this section with the institution's actual milestones and achievements.]
+              [Update this section with the institution&apos;s actual milestones and achievements.]
             </p>
             <div className="mt-6 space-y-4">
               {[

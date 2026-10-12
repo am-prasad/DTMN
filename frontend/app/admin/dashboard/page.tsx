@@ -144,7 +144,7 @@ export default function AdminDashboard() {
           <div>
             <h2 className="text-xl font-bold text-neutral-900">Dashboard</h2>
             <p className="text-sm text-neutral-500 mt-1">
-              Dynamic overview of your institution's website and activity.
+              Dynamic overview of your institution&apos;s website and activity.
             </p>
           </div>
           <div className="flex items-center gap-3">

@@ -19,11 +19,11 @@ export default function NotFound() {
         </div>
 
         <h1 className="text-2xl font-bold text-neutral-900 mb-3">
-          We couldn't find this page
+          We couldn&apos;t find this page
         </h1>
 
         <p className="text-neutral-600 mb-8 text-sm leading-relaxed">
-          The page you're looking for may have been moved, renamed, or is no 
+          The page you&apos;re looking for may have been moved, renamed, or is no 
           longer available. Please use the navigation below to find what you need.
         </p>
 

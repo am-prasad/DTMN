@@ -60,7 +60,7 @@ export default function AdminSectionsPage() {
       <div className="space-y-4 max-w-4xl">
         <div>
           <h2 className="text-lg font-semibold text-neutral-900">Academic Sections</h2>
-          <p className="text-sm text-neutral-500 mt-0.5">Edit each section's description, programs, and head's message.</p>
+          <p className="text-sm text-neutral-500 mt-0.5">Edit each section&apos;s description, programs, and head&apos;s message.</p>
         </div>
 
         {loading ? (
@@ -115,7 +115,7 @@ export default function AdminSectionsPage() {
               </div>
             </div>
             <div className="mt-4">
-              <label htmlFor="sec-hmsg" className="form-label">Head's Message</label>
+              <label htmlFor="sec-hmsg" className="form-label">Head&apos;s Message</label>
               <textarea id="sec-hmsg" rows={5} {...register("head_message")} className="form-textarea" />
             </div>
           </div>

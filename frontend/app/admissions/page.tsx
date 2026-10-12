@@ -187,7 +187,7 @@ export default function AdmissionsPage() {
                 <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-5 space-y-4">
                   <div>
                     <label htmlFor="adm-student-name" className="form-label">
-                      Student's Name *
+                      Student&apos;s Name *
                     </label>
                     <input
                       id="adm-student-name"

@@ -261,7 +261,7 @@ export default function AdminAdmissionsPage() {
               {activeEnquiry.message && (
                 <div>
                   <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">
-                    Parent's Message
+                    Parent&apos;s Message
                   </h4>
                   <div className="p-3 bg-white border border-neutral-200 rounded-lg text-sm text-neutral-700 whitespace-pre-wrap">
                     {activeEnquiry.message}
