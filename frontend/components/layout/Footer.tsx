@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { GraduationCap, MapPin, Phone, Mail, Clock } from "lucide-react";
 
@@ -21,6 +24,31 @@ const USEFUL_LINKS = [
 ];
 
 export default function Footer() {
+  const [siteContent, setSiteContent] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    import("@/lib/api").then(({ api }) => {
+      api.content.list().then((items) => {
+        setSiteContent(Object.fromEntries(items.map((i) => [i.key, i.value ?? ""])));
+      }).catch(() => {});
+    });
+  }, []);
+
+  const getVal = (key: string, fallback: string) => {
+    const v = siteContent[key];
+    if (v && !v.startsWith("[")) return v;
+    return fallback;
+  };
+
+  const instName = getVal("institution_name", "D T M N");
+  const tagline = getVal("institution_tagline", "Inspiring Minds, Building Futures");
+  const address = getVal("institution_address", "Bettadapura, Karnataka - 571102");
+  const phone = getVal("institution_phone", "+91 98765 43210");
+  const email = getVal("institution_email", "info@dtmn.edu.in");
+  const officeHours = getVal("institution_office_hours", "Mon–Fri: 9 AM – 4 PM\nSat: 9 AM – 1 PM");
+  const admEmail = getVal("admission_contact_email", "admissions@dtmn.edu.in");
+  const admPhone = getVal("admission_contact_phone", "+91 98765 43211");
+
   const year = new Date().getFullYear();
   return (
     <footer className="bg-primary-900 text-blue-100" aria-label="Site footer">
@@ -33,31 +61,31 @@ export default function Footer() {
               <div className="w-9 h-9 bg-accent rounded flex items-center justify-center flex-shrink-0">
                 <GraduationCap className="h-5 w-5 text-white" />
               </div>
-              <span className="font-bold text-white text-base leading-tight">D T M N</span>
+              <span className="font-bold text-white text-base leading-tight">{instName}</span>
             </div>
             <p className="text-sm text-blue-200 leading-relaxed mb-4">
-              [Inspiring Minds, Building Futures]
+              {tagline}
             </p>
             <div className="space-y-2.5 text-sm text-blue-200">
               <div className="flex items-start gap-2.5">
                 <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-accent-400" />
-                <span>[Full Address]</span>
+                <span className="whitespace-pre-line">{address}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Phone className="h-4 w-4 flex-shrink-0 text-accent-400" />
-                <a href="tel:[Phone Number]" className="hover:text-white transition-colors">
-                  [Phone Number]
+                <a href={`tel:${phone.replace(/\s+/g, "")}`} className="hover:text-white transition-colors">
+                  {phone}
                 </a>
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="h-4 w-4 flex-shrink-0 text-accent-400" />
-                <a href="mailto:[info@example.com]" className="hover:text-white transition-colors">
-                  [info@example.com]
+                <a href={`mailto:${email}`} className="hover:text-white transition-colors">
+                  {email}
                 </a>
               </div>
               <div className="flex items-start gap-2.5">
                 <Clock className="h-4 w-4 mt-0.5 flex-shrink-0 text-accent-400" />
-                <span>Mon–Fri: 9 AM – 4 PM<br />Sat: 9 AM – 1 PM</span>
+                <span className="whitespace-pre-line">{officeHours}</span>
               </div>
             </div>
           </div>
@@ -116,11 +144,11 @@ export default function Footer() {
               <div className="text-accent-400 font-medium text-xs uppercase tracking-wider mb-1">
                 Admissions Office
               </div>
-              <a href="mailto:[admissions@example.com]" className="hover:text-white transition-colors block">
-                [admissions@example.com]
+              <a href={`mailto:${admEmail}`} className="hover:text-white transition-colors block">
+                {admEmail}
               </a>
-              <a href="tel:[Admissions Phone]" className="hover:text-white transition-colors block">
-                [Admissions Phone]
+              <a href={`tel:${admPhone.replace(/\s+/g, "")}`} className="hover:text-white transition-colors block">
+                {admPhone}
               </a>
             </div>
           </div>

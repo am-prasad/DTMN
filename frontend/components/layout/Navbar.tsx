@@ -123,21 +123,49 @@ export default function Navbar() {
     setMobileExpanded(null);
   }, [pathname]);
 
+  const [siteContent, setSiteContent] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    import("@/lib/api").then(({ api }) => {
+      api.content.list().then((items) => {
+        setSiteContent(Object.fromEntries(items.map((i) => [i.key, i.value ?? ""])));
+      }).catch(() => {});
+    });
+  }, []);
+
+  const instName =
+    siteContent.institution_name && !siteContent.institution_name.startsWith("[")
+      ? siteContent.institution_name
+      : "D T M N Educational Institution";
+  const instPhone =
+    siteContent.institution_phone && !siteContent.institution_phone.startsWith("[")
+      ? siteContent.institution_phone
+      : "";
+  const instEmail =
+    siteContent.institution_email && !siteContent.institution_email.startsWith("[")
+      ? siteContent.institution_email
+      : "";
+  const estYear = siteContent.established_year || "2001";
+
   return (
     <>
       {/* Top info bar */}
       <div className="hidden lg:block bg-primary-900 text-blue-200 text-xs">
         <div className="container-site flex items-center justify-between py-1.5">
-          <span className="font-medium text-white">[Institution Name]</span>
+          <span className="font-medium text-white">{instName}</span>
           <div className="flex items-center gap-6">
-            <a href="tel:[Phone Number]" className="flex items-center gap-1.5 hover:text-white transition-colors">
-              <Phone className="h-3 w-3" />
-              [Phone Number]
-            </a>
-            <a href="mailto:[info@dtmn.com]" className="flex items-center gap-1.5 hover:text-white transition-colors">
-              <Mail className="h-3 w-3" />
-              [info@example.com]
-            </a>
+            {instPhone && (
+              <a href={`tel:${instPhone.replace(/\s+/g, "")}`} className="flex items-center gap-1.5 hover:text-white transition-colors">
+                <Phone className="h-3 w-3" />
+                {instPhone}
+              </a>
+            )}
+            {instEmail && (
+              <a href={`mailto:${instEmail}`} className="flex items-center gap-1.5 hover:text-white transition-colors">
+                <Mail className="h-3 w-3" />
+                {instEmail}
+              </a>
+            )}
           </div>
         </div>
       </div>
@@ -157,9 +185,9 @@ export default function Navbar() {
                 <GraduationCap className="h-5 w-5 text-white" />
               </div>
               <div className="hidden sm:block">
-                <div className="text-sm font-bold text-primary leading-tight">[Institution Name]</div>
+                <div className="text-sm font-bold text-primary leading-tight">{instName}</div>
                 <div className="text-[10px] text-neutral-500 leading-tight tracking-wide">
-                  Est. 2001
+                  Est. {estYear}
                 </div>
               </div>
             </Link>

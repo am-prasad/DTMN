@@ -94,8 +94,13 @@ async def create_circular(
     current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ) -> CircularOut:
+    data = body.model_dump()
+    if not data.get("published_at"):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        data["published_at"] = datetime.now(ZoneInfo("Asia/Kolkata")).date()
     slug = slugify(body.title)
-    circular = Circular(**body.model_dump(), slug=slug)
+    circular = Circular(**data, slug=slug)
     db.add(circular)
     await db.commit()
     await db.refresh(circular)

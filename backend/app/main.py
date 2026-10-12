@@ -32,11 +32,28 @@ async def lifespan(app: FastAPI):
 
     
     try:
-        from app.core.database import engine, Base
+        from app.core.database import engine, Base, AsyncSessionLocal
         import app.models  # noqa: F401
+        from app.models.user import User, UserRole
+        from sqlalchemy import select
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             logger.info("database_tables_ready")
+
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(select(User))
+            users = result.scalars().all()
+            for u in users:
+                is_seed_email = settings.SEED_ADMIN_EMAIL and u.email.lower() == settings.SEED_ADMIN_EMAIL.lower()
+                no_super_admin = not any(
+                    str(getattr(x.role, "value", x.role)).lower().endswith("super_admin") for x in users
+                )
+                if is_seed_email or len(users) == 1 or no_super_admin:
+                    if not str(getattr(u.role, "value", u.role)).lower().endswith("super_admin"):
+                        u.role = UserRole.SUPER_ADMIN
+                        await session.commit()
+                        logger.info("ensured_super_admin", email=u.email)
+                    break
     except Exception as e:
         logger.error("database_startup_init_error", error=str(e))
 

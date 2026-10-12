@@ -10,33 +10,47 @@ const inter = Inter({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ),
-  title: {
-    default: "[Institution Name] | [City]",
-    template: "%s | [Institution Name]",
-  },
-  description:
-    "[Institution Name] offers quality education from Nursery through College in [City]. Admissions open for the current academic session.",
-  keywords: [
-    "D T M N",
-    "school",
-    "college",
-    "admissions",
-    "Bettadapura",
-    "education",
-  ],
-  openGraph: {
-    type: "website",
-    siteName: "D T M N",
-    title: "D T M N",
-    description: "Quality education from Nursery through College.",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-};
+import { api } from "@/lib/api";
+
+export async function generateMetadata(): Promise<Metadata> {
+  let instName = "D T M N";
+  try {
+    const item = await api.content.get("institution_name");
+    if (item?.value && !item.value.startsWith("[")) {
+      instName = item.value;
+    }
+  } catch {}
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+  return {
+    metadataBase: new URL(siteUrl),
+    title: {
+      default: `${instName} | Bettadapura`,
+      template: `%s | ${instName}`,
+    },
+    description: `${instName} offers quality education from Nursery through College in Bettadapura. Admissions open for the current academic session.`,
+    keywords: [
+      instName,
+      "D T M N",
+      "school",
+      "college",
+      "admissions",
+      "Bettadapura",
+      "education",
+    ],
+    openGraph: {
+      type: "website",
+      siteName: instName,
+      title: instName,
+      description: "Quality education from Nursery through College.",
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
+  };
+}
 
 export default function RootLayout({
   children,

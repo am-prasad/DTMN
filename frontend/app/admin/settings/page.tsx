@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import Link from "next/link";
 import { CheckCircle, Lock } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 
@@ -64,7 +65,14 @@ export default function AdminSettingsPage() {
               <CheckCircle className="h-10 w-10 text-green-500 mb-3" />
               <h3 className="font-semibold text-neutral-900">Password updated</h3>
               <p className="text-sm text-neutral-500 mt-1">Your password has been changed successfully.</p>
-              <button onClick={() => setSaved(false)} className="btn-secondary btn-sm mt-5">Change Again</button>
+              <div className="flex items-center justify-center gap-3 mt-5">
+                <Link href="/admin/dashboard" className="btn-primary btn-sm">
+                  Go to Dashboard
+                </Link>
+                <button onClick={() => setSaved(false)} className="btn-secondary btn-sm">
+                  Change Again
+                </button>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">

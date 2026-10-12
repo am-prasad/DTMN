@@ -19,6 +19,7 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     requires_mfa: bool = False
+    must_change_password: bool = False
 
 
 class RefreshResponse(BaseModel):

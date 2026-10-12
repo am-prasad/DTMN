@@ -14,7 +14,7 @@ from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.core.deps import CurrentUser, require_content_admin
 from app.models.activity import Activity, ActivityCategory
-from app.schemas.activity import ActivityCreate, ActivityListOut, ActivityOut, ActivityUpdate
+from app.schemas.activity import ActivityCategoryCreate, ActivityCategoryOut, ActivityCreate, ActivityListOut, ActivityOut, ActivityUpdate
 from app.schemas.common import MessageResponse
 from app.schemas.bulk import BulkActionRequest, BulkActionResponse
 from app.services.audit_service import AuditService
@@ -154,4 +154,37 @@ async def bulk_action_activities(
     ip = request.client.host if request.client else None
     await AuditService(db).log(f"ACTIVITY_BULK_{body.action.upper()}", current_user, "activity", None, ip, {"ids": body.ids})
     return BulkActionResponse(affected=len(activities), action=body.action, message=f"{len(activities)} activity(ies) updated.")
+
+
+# ---------------------------------------------------------------------------
+# Activity Categories CRUD
+# ---------------------------------------------------------------------------
+@router.get("/activity-categories", response_model=list[ActivityCategoryOut])
+async def list_activity_categories(db: AsyncSession = Depends(get_db)) -> list[ActivityCategoryOut]:
+    result = await db.execute(select(ActivityCategory).order_by(ActivityCategory.name.asc()))
+    return list(result.scalars().all())
+
+
+@router.post("/admin/activity-categories", response_model=ActivityCategoryOut, status_code=201, dependencies=[Depends(require_content_admin())])
+async def create_activity_category(body: ActivityCategoryCreate, db: AsyncSession = Depends(get_db)) -> ActivityCategoryOut:
+    slug = slugify(body.name)
+    existing = await db.execute(select(ActivityCategory).where(ActivityCategory.slug == slug))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Category already exists.")
+    cat = ActivityCategory(name=body.name, slug=slug)
+    db.add(cat)
+    await db.commit()
+    await db.refresh(cat)
+    return cat
+
+
+@router.delete("/admin/activity-categories/{category_id}", response_model=MessageResponse, dependencies=[Depends(require_content_admin())])
+async def delete_activity_category(category_id: int, db: AsyncSession = Depends(get_db)) -> MessageResponse:
+    result = await db.execute(select(ActivityCategory).where(ActivityCategory.id == category_id))
+    cat = result.scalar_one_or_none()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found.")
+    await db.delete(cat)
+    await db.commit()
+    return MessageResponse(message="Category deleted.")
 

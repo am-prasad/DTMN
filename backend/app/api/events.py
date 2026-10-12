@@ -16,7 +16,7 @@ from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.core.deps import CurrentUser, require_content_admin
 from app.models.event import Event, EventCategory
-from app.schemas.event import EventCreate, EventListOut, EventOut, EventUpdate
+from app.schemas.event import EventCategoryCreate, EventCategoryOut, EventCreate, EventListOut, EventOut, EventUpdate
 from app.schemas.common import MessageResponse
 from app.schemas.bulk import BulkActionRequest, BulkActionResponse
 from app.services.audit_service import AuditService
@@ -169,4 +169,37 @@ async def bulk_action_events(
     ip = request.client.host if request.client else None
     await AuditService(db).log(f"EVENT_BULK_{body.action.upper()}", current_user, "event", None, ip, {"ids": body.ids})
     return BulkActionResponse(affected=len(events), action=body.action, message=f"{len(events)} event(s) updated.")
+
+
+# ---------------------------------------------------------------------------
+# Event Categories CRUD
+# ---------------------------------------------------------------------------
+@router.get("/event-categories", response_model=list[EventCategoryOut])
+async def list_event_categories(db: AsyncSession = Depends(get_db)) -> list[EventCategoryOut]:
+    result = await db.execute(select(EventCategory).order_by(EventCategory.name.asc()))
+    return list(result.scalars().all())
+
+
+@router.post("/admin/event-categories", response_model=EventCategoryOut, status_code=201, dependencies=[Depends(require_content_admin())])
+async def create_event_category(body: EventCategoryCreate, db: AsyncSession = Depends(get_db)) -> EventCategoryOut:
+    slug = slugify(body.name)
+    existing = await db.execute(select(EventCategory).where(EventCategory.slug == slug))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Category already exists.")
+    cat = EventCategory(name=body.name, slug=slug)
+    db.add(cat)
+    await db.commit()
+    await db.refresh(cat)
+    return cat
+
+
+@router.delete("/admin/event-categories/{category_id}", response_model=MessageResponse, dependencies=[Depends(require_content_admin())])
+async def delete_event_category(category_id: int, db: AsyncSession = Depends(get_db)) -> MessageResponse:
+    result = await db.execute(select(EventCategory).where(EventCategory.id == category_id))
+    cat = result.scalar_one_or_none()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found.")
+    await db.delete(cat)
+    await db.commit()
+    return MessageResponse(message="Category deleted.")
 

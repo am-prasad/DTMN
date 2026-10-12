@@ -14,21 +14,31 @@ interface ModalProps {
 
 export function Modal({ open, onClose, title, children, size = "md" }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
 
-  // Escape key close + focus trap
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
+  // Escape key close + initial focus
   useEffect(() => {
     if (!open) return;
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     };
     document.addEventListener("keydown", handleKey);
     document.body.style.overflow = "hidden";
-    dialogRef.current?.focus();
+
+    // Only set focus to dialog wrapper if focus is not already inside the dialog (e.g. on an input)
+    if (!dialogRef.current?.contains(document.activeElement)) {
+      dialogRef.current?.focus();
+    }
+
     return () => {
       document.removeEventListener("keydown", handleKey);
       document.body.style.overflow = "";
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

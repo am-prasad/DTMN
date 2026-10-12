@@ -1,4 +1,4 @@
-﻿"""Pydantic schemas for faculty."""
+"""Pydantic schemas for faculty."""
 from __future__ import annotations
 from typing import Optional
 from pydantic import BaseModel, EmailStr, Field, model_validator
@@ -9,6 +9,11 @@ class DepartmentOut(BaseModel):
     model_config = {"from_attributes": True}
     id: int
     name: str
+    section: AcademicSectionSlug
+
+
+class DepartmentCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
     section: AcademicSectionSlug
 
 

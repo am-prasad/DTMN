@@ -1,4 +1,4 @@
-﻿"""Pydantic schemas for events."""
+"""Pydantic schemas for events."""
 from __future__ import annotations
 from datetime import date, time
 from typing import Optional
@@ -11,6 +11,10 @@ class EventCategoryOut(BaseModel):
     id: int
     name: str
     slug: str
+
+
+class EventCategoryCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
 
 
 class EventImageOut(BaseModel):

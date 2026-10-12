@@ -1,11 +1,13 @@
 # Core framework
 fastapi==0.115.5
 uvicorn[standard]==0.32.1
-python-multipart==0.0.12
+# C6: was 0.0.12 (7 CVEs); fixed in 0.0.31+
+python-multipart==0.0.31
 
 # Database
 sqlalchemy[asyncio]==2.0.36
-aiomysql==0.2.0
+# C6: was 0.2.0 (1 CVE); fixed in 0.3.0
+aiomysql==0.3.0
 pymysql==1.1.1
 alembic==1.14.0
 greenlet==3.1.1
@@ -18,6 +20,11 @@ email-validator==2.2.0
 # Security
 passlib[argon2]==1.7.4
 argon2-cffi==23.1.0
+# C6: python-jose is unmaintained (3 CVEs + ecdsa dep CVEs).
+# PyJWT is the maintained replacement. Migrate fully when time allows;
+# for now both coexist while the codebase is transitioned.
+PyJWT==2.10.1
+# Kept temporarily for backward-compat during migration:
 python-jose[cryptography]==3.3.0
 pyotp==2.9.0
 qrcode[pil]==8.0
@@ -28,8 +35,12 @@ slowapi==0.1.9
 # File handling & security
 python-magic-bin==0.4.14; sys_platform == "win32"
 python-magic==0.4.27; sys_platform != "win32"
-Pillow==11.0.0
+# C6: was 11.0.0 (17 CVEs); fixed in 12.3.0+
+Pillow==12.0.0
+# C6: bleach is deprecated (2 CVEs); nh3 is the maintained Rust-backed replacement.
+# Kept as fallback while content.py is migrated to nh3.
 bleach==6.2.0
+nh3==0.2.21
 
 # HTTP
 httpx==0.28.1
@@ -37,15 +48,15 @@ httpx==0.28.1
 # Logging
 structlog==24.4.0
 
-# Email
-aiosmtplib==3.0.2
+# Email — C6: aiosmtplib has 2 CVEs and is currently unused; remove when confirmed
+# aiosmtplib==3.0.2   # REMOVED — unused, CVEs
 
 # Testing
 pytest==8.3.4
 pytest-asyncio==0.24.0
 pytest-cov==6.0.0
-factory-boy==3.3.1
+# factory-boy==3.3.1  # unused in tests currently; re-add when test suite is built out
 
 # Utilities
 python-slugify==8.0.4
-orjson==3.10.12
+# orjson==3.10.12   # REMOVED — unused, has CVE

@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
     SMTP_FROM_EMAIL: str = "noreply@example.com"
-    SMTP_FROM_NAME: str = "[Institution Name]"
+    SMTP_FROM_NAME: str = "D T M N"
     SMTP_USE_TLS: bool = True
 
     # Security

@@ -5,10 +5,10 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from slugify import slugify
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -30,9 +30,12 @@ from app.schemas.content import (
     AcademicSectionUpdate,
     AdmissionEnquiryCreate,
     AdmissionEnquiryOut,
+    AdmissionEnquiryUpdate,
     AdmissionInfoOut,
     AdmissionInfoUpdate,
     ContactSubmissionCreate,
+    ContactSubmissionOut,
+    ContactSubmissionUpdate,
     FacilityCreate,
     FacilityOut,
     FacilityUpdate,
@@ -40,6 +43,7 @@ from app.schemas.content import (
     GalleryAlbumListOut,
     GalleryAlbumOut,
     GalleryAlbumUpdate,
+    GalleryImageOut,
     SiteContentOut,
     SiteContentUpdate,
     UserCreate,
@@ -47,6 +51,7 @@ from app.schemas.content import (
     UserUpdate,
 )
 from app.services.audit_service import AuditService
+from app.services.storage_service import StorageService, get_storage
 
 router = APIRouter(tags=["Content"])
 
@@ -137,6 +142,69 @@ async def update_album(album_id: int, body: GalleryAlbumUpdate, db: AsyncSession
     return result.scalar_one()
 
 
+@router.get("/admin/gallery/{album_id}", response_model=GalleryAlbumOut, dependencies=[Depends(require_content_admin())])
+async def admin_get_album(album_id: int, db: AsyncSession = Depends(get_db)) -> GalleryAlbumOut:
+    result = await db.execute(
+        select(GalleryAlbum).options(selectinload(GalleryAlbum.images)).where(GalleryAlbum.id == album_id)
+    )
+    album = result.scalar_one_or_none()
+    if not album:
+        raise HTTPException(status_code=404, detail="Album not found.")
+    return album
+
+
+@router.delete("/admin/gallery/{album_id}", response_model=dict, dependencies=[Depends(require_content_admin())])
+async def delete_album(album_id: int, db: AsyncSession = Depends(get_db)) -> dict:
+    result = await db.execute(select(GalleryAlbum).where(GalleryAlbum.id == album_id))
+    album = result.scalar_one_or_none()
+    if not album:
+        raise HTTPException(status_code=404, detail="Album not found.")
+    await db.delete(album)
+    await db.commit()
+    return {"message": "Gallery album deleted successfully."}
+
+
+@router.post("/admin/gallery/{album_id}/images", response_model=GalleryImageOut, dependencies=[Depends(require_content_admin())])
+async def add_album_image(
+    album_id: int,
+    file: UploadFile = File(...),
+    caption: Optional[str] = Form(None),
+    storage: StorageService = Depends(get_storage),
+    db: AsyncSession = Depends(get_db),
+) -> GalleryImageOut:
+    result = await db.execute(select(GalleryAlbum).where(GalleryAlbum.id == album_id))
+    album = result.scalar_one_or_none()
+    if not album:
+        raise HTTPException(status_code=404, detail="Album not found.")
+
+    path = await storage.save_image(file, subdir="gallery")
+
+    count_res = await db.execute(select(func.count()).where(GalleryImage.album_id == album_id))
+    current_count = count_res.scalar() or 0
+
+    image = GalleryImage(album_id=album.id, image_path=path, caption=caption, sort_order=current_count)
+    db.add(image)
+
+    # Set as cover image if album doesn't have one
+    if not album.cover_image:
+        album.cover_image = path
+
+    await db.commit()
+    await db.refresh(image)
+    return image
+
+
+@router.delete("/admin/gallery/images/{image_id}", response_model=dict, dependencies=[Depends(require_content_admin())])
+async def delete_album_image(image_id: int, db: AsyncSession = Depends(get_db)) -> dict:
+    result = await db.execute(select(GalleryImage).where(GalleryImage.id == image_id))
+    img = result.scalar_one_or_none()
+    if not img:
+        raise HTTPException(status_code=404, detail="Image not found.")
+    await db.delete(img)
+    await db.commit()
+    return {"message": "Image deleted successfully."}
+
+
 # ===========================================================================
 # Facilities
 # ===========================================================================
@@ -145,6 +213,12 @@ async def list_facilities(db: AsyncSession = Depends(get_db)) -> list[FacilityOu
     result = await db.execute(
         select(Facility).where(Facility.is_active == True).order_by(Facility.sort_order.asc())
     )
+    return list(result.scalars().all())
+
+
+@router.get("/admin/facilities", response_model=list[FacilityOut], dependencies=[Depends(require_content_admin())])
+async def admin_list_facilities(db: AsyncSession = Depends(get_db)) -> list[FacilityOut]:
+    result = await db.execute(select(Facility).order_by(Facility.sort_order.asc(), Facility.id.asc()))
     return list(result.scalars().all())
 
 
@@ -261,6 +335,23 @@ async def list_enquiries(
     return list(result.scalars().all())
 
 
+@router.patch("/admin/admissions/enquiries/{enquiry_id}", response_model=AdmissionEnquiryOut, dependencies=[Depends(require_admission_admin())])
+async def update_enquiry(
+    enquiry_id: int,
+    body: AdmissionEnquiryUpdate,
+    db: AsyncSession = Depends(get_db),
+) -> AdmissionEnquiryOut:
+    result = await db.execute(select(AdmissionEnquiry).where(AdmissionEnquiry.id == enquiry_id))
+    enquiry = result.scalar_one_or_none()
+    if not enquiry:
+        raise HTTPException(status_code=404, detail="Enquiry not found.")
+    for k, v in body.model_dump(exclude_none=True).items():
+        setattr(enquiry, k, v)
+    await db.commit()
+    await db.refresh(enquiry)
+    return enquiry
+
+
 # ===========================================================================
 # Site Content
 # ===========================================================================
@@ -323,7 +414,7 @@ async def update_content(key: str, body: SiteContentUpdate, db: AsyncSession = D
 
 
 # ===========================================================================
-# Contact form
+# Contact form & Inbox
 # ===========================================================================
 @router.post("/contact", response_model=MessageResponse, status_code=201)
 async def submit_contact(body: ContactSubmissionCreate, request: Request, db: AsyncSession = Depends(get_db)) -> MessageResponse:
@@ -337,52 +428,246 @@ async def submit_contact(body: ContactSubmissionCreate, request: Request, db: As
     return MessageResponse(message="Thank you for your message. We will respond within 2 business days.")
 
 
+@router.get("/admin/contact-submissions", response_model=list[ContactSubmissionOut], dependencies=[Depends(require_content_admin())])
+async def list_contact_submissions(
+    is_read: Optional[bool] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> list[ContactSubmissionOut]:
+    q = select(ContactSubmission)
+    if is_read is not None:
+        q = q.where(ContactSubmission.is_read == is_read)
+    q = q.order_by(ContactSubmission.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    result = await db.execute(q)
+    return list(result.scalars().all())
+
+
+@router.patch("/admin/contact-submissions/{submission_id}", response_model=ContactSubmissionOut, dependencies=[Depends(require_content_admin())])
+async def update_contact_submission(
+    submission_id: int,
+    body: ContactSubmissionUpdate,
+    db: AsyncSession = Depends(get_db),
+) -> ContactSubmissionOut:
+    result = await db.execute(select(ContactSubmission).where(ContactSubmission.id == submission_id))
+    sub = result.scalar_one_or_none()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Contact submission not found.")
+    for k, v in body.model_dump(exclude_none=True).items():
+        setattr(sub, k, v)
+    await db.commit()
+    await db.refresh(sub)
+    return sub
+
+
+@router.delete("/admin/contact-submissions/{submission_id}", response_model=MessageResponse, dependencies=[Depends(require_content_admin())])
+async def delete_contact_submission(
+    submission_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    result = await db.execute(select(ContactSubmission).where(ContactSubmission.id == submission_id))
+    sub = result.scalar_one_or_none()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Contact submission not found.")
+    await db.delete(sub)
+    await db.commit()
+    return MessageResponse(message="Contact submission deleted.")
+
+
 # ===========================================================================
-# Admin stats (dashboard)
+# Admin stats (dashboard v2)
 # ===========================================================================
-@router.get("/admin/stats", dependencies=[Depends(require_content_admin())])
-async def get_stats(db: AsyncSession = Depends(get_db)):
-    from datetime import date
+@router.get("/admin/stats")
+async def get_stats(
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+):
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
     from fastapi.responses import JSONResponse
     from app.models.event import Event
     from app.models.circular import Circular
     from app.models.activity import Activity
     from app.models.faculty import Faculty
 
-    today = date.today()
+    def count_if(cond):
+        return func.coalesce(func.sum(case((cond, 1), else_=0)), 0)
 
-    r = await db.execute(select(func.count()).select_from(Event).where(Event.is_archived == False))
-    total_events = r.scalar() or 0
+    # Use Asia/Kolkata for school in India
+    today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+    next_7d = today + timedelta(days=7)
 
-    r = await db.execute(select(func.count()).select_from(Circular).where(
-        Circular.is_published == True, Circular.is_archived == False))
-    published_circulars = r.scalar() or 0
+    # 1. Events single query
+    ev_row = (await db.execute(select(
+        count_if(Event.is_archived.is_(False)).label("total"),
+        count_if(Event.is_archived.is_(False) & Event.is_published.is_(False)).label("drafts"),
+        count_if(Event.is_archived.is_(False) & Event.is_published.is_(True) & (Event.event_date >= today)).label("upcoming"),
+        count_if(Event.is_archived.is_(False) & Event.is_published.is_(True) & (Event.event_date < today)).label("past"),
+    ))).one()
 
-    r = await db.execute(select(func.count()).select_from(Activity).where(Activity.is_archived == False))
-    total_activities = r.scalar() or 0
+    # 2. Circulars single query
+    circ_row = (await db.execute(select(
+        count_if(Circular.is_archived.is_(False) & Circular.is_published.is_(True)).label("published"),
+        count_if(Circular.is_archived.is_(False) & Circular.is_published.is_(False)).label("drafts"),
+        count_if(
+            Circular.is_archived.is_(False)
+            & Circular.is_published.is_(True)
+            & (Circular.expires_at.is_not(None))
+            & (Circular.expires_at >= today)
+            & (Circular.expires_at <= next_7d)
+        ).label("expiring_7d"),
+    ))).one()
 
-    r = await db.execute(select(func.count()).select_from(Faculty).where(Faculty.is_active == True))
-    total_faculty = r.scalar() or 0
+    # 3. Activities single query
+    act_row = (await db.execute(select(
+        count_if(Activity.is_archived.is_(False) & Activity.is_published.is_(True)).label("published"),
+        count_if(Activity.is_archived.is_(False) & Activity.is_published.is_(False)).label("drafts"),
+    ))).one()
 
-    r = await db.execute(select(func.count()).select_from(GalleryAlbum).where(GalleryAlbum.is_archived == False))
-    gallery_albums = r.scalar() or 0
+    # 4. Faculty single query
+    fac_row = (await db.execute(select(
+        count_if(Faculty.is_active.is_(True)).label("active"),
+        count_if(Faculty.is_active.is_(False)).label("inactive"),
+    ))).one()
 
-    r = await db.execute(select(func.count()).select_from(AdmissionEnquiry))
-    admission_enquiries = r.scalar() or 0
+    # 5. Gallery albums
+    gal_res = await db.execute(
+        select(GalleryAlbum).options(selectinload(GalleryAlbum.images)).where(GalleryAlbum.is_archived.is_(False))
+    )
+    albums = list(gal_res.scalars().all())
+    gallery_published = sum(1 for a in albums if a.is_published)
+    empty_albums = sum(1 for a in albums if a.is_published and len(a.images) == 0)
 
-    r = await db.execute(select(func.count()).select_from(Event).where(
-        Event.event_date >= today, Event.is_published == True, Event.is_archived == False))
-    upcoming_events = r.scalar() or 0
+    # 6. Admission enquiries single query
+    enq_row = (await db.execute(select(
+        count_if(AdmissionEnquiry.status == EnquiryStatus.NEW).label("new"),
+        func.count(AdmissionEnquiry.id).label("total"),
+    ))).one()
+
+    # 7. Contact submissions single query
+    cnt_row = (await db.execute(select(
+        count_if(ContactSubmission.is_read.is_(False)).label("unread"),
+    ))).one()
+
+    # 8. Needs attention panel items
+    attention = []
+    # New enquiries
+    new_enq_rows = (await db.execute(
+        select(AdmissionEnquiry.id, AdmissionEnquiry.student_name)
+        .where(AdmissionEnquiry.status == EnquiryStatus.NEW)
+        .order_by(AdmissionEnquiry.created_at.desc())
+        .limit(5)
+    )).all()
+    for e in new_enq_rows:
+        attention.append({
+            "type": "enquiry",
+            "resource": "admission",
+            "id": e.id,
+            "label": f"New enquiry from {e.student_name}",
+        })
+
+    # Unread contact submissions
+    unread_cnt_rows = (await db.execute(
+        select(ContactSubmission.id, ContactSubmission.name, ContactSubmission.subject)
+        .where(ContactSubmission.is_read.is_(False))
+        .order_by(ContactSubmission.created_at.desc())
+        .limit(5)
+    )).all()
+    for c in unread_cnt_rows:
+        attention.append({
+            "type": "contact",
+            "resource": "contact",
+            "id": c.id,
+            "label": f"Unread message from {c.name}: {c.subject}",
+        })
+
+    # Expiring circulars
+    expiring_circ_rows = (await db.execute(
+        select(Circular.id, Circular.title)
+        .where(
+            Circular.is_archived.is_(False),
+            Circular.is_published.is_(True),
+            Circular.expires_at.is_not(None),
+            Circular.expires_at >= today,
+            Circular.expires_at <= next_7d,
+        )
+        .limit(5)
+    )).all()
+    for c in expiring_circ_rows:
+        attention.append({
+            "type": "circular",
+            "resource": "circular",
+            "id": c.id,
+            "label": f"Expiring circular: {c.title}",
+        })
+
+    # Empty published albums
+    for a in albums:
+        if a.is_published and len(a.images) == 0:
+            attention.append({
+                "type": "gallery",
+                "resource": "gallery",
+                "id": a.id,
+                "label": f"Published album with 0 photos: {a.title}",
+            })
+
+    # 9. Recent activity feed from AuditLog
+    recent_audit = (await db.execute(
+        select(AuditLog).order_by(AuditLog.created_at.desc()).limit(10)
+    )).scalars().all()
+    recent = [
+        {
+            "action": a.action,
+            "user": a.user_email or "System",
+            "resource": a.resource_type or "",
+            "at": a.created_at.isoformat() if a.created_at else "",
+        }
+        for a in recent_audit
+    ]
 
     return JSONResponse(
         content={
-            "total_events": total_events,
-            "published_circulars": published_circulars,
-            "total_activities": total_activities,
-            "total_faculty": total_faculty,
-            "gallery_albums": gallery_albums,
-            "admission_enquiries": admission_enquiries,
-            "upcoming_events": upcoming_events,
+            # Backward-compatible top-level keys
+            "total_events": int(ev_row.total or 0),
+            "upcoming_events": int(ev_row.upcoming or 0),
+            "published_circulars": int(circ_row.published or 0),
+            "total_activities": int(act_row.published or 0) + int(act_row.drafts or 0),
+            "total_faculty": int(fac_row.active or 0),
+            "gallery_albums": len(albums),
+            "admission_enquiries": int(enq_row.total or 0),
+            # V2 structured breakdown
+            "events": {
+                "total": int(ev_row.total or 0),
+                "drafts": int(ev_row.drafts or 0),
+                "upcoming": int(ev_row.upcoming or 0),
+                "past": int(ev_row.past or 0),
+            },
+            "circulars": {
+                "published": int(circ_row.published or 0),
+                "drafts": int(circ_row.drafts or 0),
+                "expiring_7d": int(circ_row.expiring_7d or 0),
+            },
+            "activities": {
+                "published": int(act_row.published or 0),
+                "drafts": int(act_row.drafts or 0),
+            },
+            "faculty": {
+                "active": int(fac_row.active or 0),
+                "inactive": int(fac_row.inactive or 0),
+            },
+            "gallery": {
+                "published": gallery_published,
+                "empty_albums": empty_albums,
+            },
+            "enquiries": {
+                "new": int(enq_row.new or 0),
+                "total": int(enq_row.total or 0),
+            },
+            "contact": {
+                "unread": int(cnt_row.unread or 0),
+            },
+            "attention": attention,
+            "recent": recent,
         },
         headers={"Cache-Control": "no-store"},
     )

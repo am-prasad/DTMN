@@ -57,7 +57,18 @@ async def get_current_user(
     if user is None or not user.is_active:
         raise credentials_exception
 
+    # C7: enforce must_change_password — only /auth/password/change and
+    # /auth/me are allowed until the user sets a new password.
+    if user.must_change_password:
+        allowed_paths = {"/api/v1/auth/password/change", "/api/v1/auth/me"}
+        if request.url.path not in allowed_paths:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Password change required. Please change your password before continuing.",
+            )
+
     return user
+
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
@@ -66,15 +77,19 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 def require_role(*roles: UserRole):
     """
     Dependency factory: ensures the authenticated user has one of the required roles.
-    Handles both Enum instances and raw string values returned by some DB drivers (e.g. aiomysql).
+    Handles Enum instances, raw string values, and case variations.
     """
-    # Build a set of string values for comparison (handles str vs Enum mismatch)
-    role_values = {r.value if isinstance(r, UserRole) else str(r) for r in roles}
+    expected = set()
+    for r in roles:
+        val = r.value if isinstance(r, UserRole) else str(r)
+        expected.add(val.lower())
+        name = r.name if isinstance(r, UserRole) else str(r)
+        expected.add(name.lower())
 
     async def _check_role(current_user: CurrentUser) -> User:
-        # Support both UserRole enum and raw string stored by aiomysql
-        user_role = current_user.role.value if isinstance(current_user.role, UserRole) else str(current_user.role)
-        if user_role not in role_values:
+        user_role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+        role_str = str(user_role).lower().split(".")[-1]
+        if role_str not in expected and role_str.replace("-", "_") not in expected:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to perform this action.",

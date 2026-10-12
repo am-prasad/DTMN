@@ -1,4 +1,4 @@
-﻿"""
+"""
 Secure file storage service.
 
 STORAGE_BACKEND=local  -> local disk (default, dev / VPS)

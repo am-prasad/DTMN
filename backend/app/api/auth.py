@@ -17,7 +17,11 @@ from app.core.database import get_db
 from app.core.deps import CurrentUser
 from app.core.logging import log_security_event
 from app.core.security import (
+    DUMMY_HASH,
+    async_verify_password,
     create_access_token,
+    create_mfa_pending_token,
+    decode_mfa_pending_token,
     create_refresh_token,
     decode_refresh_token,
     generate_recovery_codes,
@@ -25,6 +29,7 @@ from app.core.security import (
     generate_totp_secret,
     get_totp_uri,
     hash_password,
+    utcnow,
     verify_password,
     verify_recovery_code,
     verify_totp,
@@ -49,8 +54,14 @@ limiter = Limiter(key_func=get_remote_address)
 
 REFRESH_COOKIE = "refresh_token"
 ACCESS_COOKIE = "access_token"
-COOKIE_SAMESITE = "none" if settings.is_production else "lax"
-COOKIE_SECURE = True if settings.is_production else False
+# C5: Use lax (not 'none') so the browser withholds cookies on
+# cross-origin requests, providing actual CSRF protection.
+COOKIE_SAMESITE = "lax"
+COOKIE_SECURE = settings.is_production
+
+# C3: Pre-compute a valid Argon2id hash at module load so the timing-
+# equalisation call in the unknown-email branch never raises ValueError.
+from app.core.security import DUMMY_HASH  # noqa: E402  (imported here, defined there)
 
 
 def _set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
@@ -91,22 +102,28 @@ async def login(
     user = await repo.get_by_email(body.email)
     ip = request.client.host if request.client else "unknown"
 
-    # Account not found — still do work to prevent timing oracle
+    # Account not found — still hash to prevent timing oracle (C3: valid hash).
     if not user:
-        verify_password("dummy", "$argon2id$v=19$m=65536,t=3,p=4$dummy$dummy")
+        verify_password(body.password, DUMMY_HASH)
         log_security_event("LOGIN_FAILED_USER_NOT_FOUND", ip_address=ip)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials.")
 
-    # Account locked
-    if user.locked_until and user.locked_until > datetime.now(timezone.utc):
-        log_security_event("LOGIN_BLOCKED_LOCKED", user_id=str(user.id), ip_address=ip)
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Account temporarily locked due to repeated failed login attempts.",
-        )
+    # Account locked — H2: compare using naive UTC to avoid TypeError from MySQL
+    from app.core.security import utcnow
+    if user.locked_until:
+        locked = user.locked_until
+        # MySQL returns naive datetimes; make comparison safe
+        now = utcnow()
+        locked_naive = locked.replace(tzinfo=None) if locked.tzinfo else locked
+        if locked_naive > now:
+            log_security_event("LOGIN_BLOCKED_LOCKED", user_id=str(user.id), ip_address=ip)
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Account temporarily locked due to repeated failed login attempts.",
+            )
 
-    # Password verification
-    if not verify_password(body.password, user.hashed_password):
+    # H3: use async wrapper so Argon2 doesn't block the event loop
+    if not await async_verify_password(body.password, user.hashed_password):
         await repo.increment_failed_login(user, settings.MAX_LOGIN_ATTEMPTS, settings.LOCKOUT_DURATION_MINUTES)
         log_security_event("LOGIN_FAILED_WRONG_PASSWORD", user_id=str(user.id), ip_address=ip)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials.")
@@ -118,19 +135,27 @@ async def login(
     await repo.reset_failed_login(user)
     log_security_event("LOGIN_SUCCESS", user_id=str(user.id), ip_address=ip)
 
-    # MFA required?
+    # MFA required — C2: issue a short-lived SIGNED token instead of
+    # an unsigned base64 JSON cookie that any attacker can forge.
     if user.mfa_enabled:
-        # Issue a temporary MFA-pending cookie (very short-lived)
-        import json, base64
-        pending = base64.b64encode(json.dumps({"uid": user.id}).encode()).decode()
-        response.set_cookie("mfa_pending", pending, httponly=True, secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE, max_age=300)
+        from app.core.security import create_mfa_pending_token
+        mfa_token = create_mfa_pending_token(user.id)
+        response.set_cookie(
+            "mfa_pending", mfa_token,
+            httponly=True, secure=COOKIE_SECURE,
+            samesite=COOKIE_SAMESITE, max_age=300,
+        )
         return TokenResponse(access_token="", requires_mfa=True)
 
-    token_data = {"sub": str(user.id), "role": user.role.value}
+    role_str = str(user.role.value if hasattr(user.role, "value") else user.role).lower().split(".")[-1]
+    token_data = {"sub": str(user.id), "role": role_str}
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)
     _set_auth_cookies(response, access_token, refresh_token)
-    return TokenResponse(access_token=access_token)
+    return TokenResponse(
+        access_token=access_token,
+        must_change_password=user.must_change_password,
+    )
 
 
 @router.post("/mfa/verify", response_model=TokenResponse)
@@ -141,17 +166,17 @@ async def verify_mfa(
     body: MFAVerifyRequest,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
-    """Verify TOTP code after password login. Requires mfa_pending cookie."""
-    import json, base64
+    # C2: validate the signed MFA-pending token
     mfa_pending = request.cookies.get("mfa_pending")
     if not mfa_pending:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No pending MFA session.")
 
+    from app.core.security import decode_mfa_pending_token
+    from jose import JWTError
     try:
-        pending = json.loads(base64.b64decode(mfa_pending).decode())
-        uid = int(pending["uid"])
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid MFA session.")
+        uid = decode_mfa_pending_token(mfa_pending)
+    except (JWTError, ValueError, KeyError):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired MFA session.")
 
     repo = UserRepository(db)
     user = await repo.get_by_id(uid)
@@ -167,11 +192,15 @@ async def verify_mfa(
     log_security_event("MFA_SUCCESS", user_id=str(uid), ip_address=ip)
     response.delete_cookie("mfa_pending")
 
-    token_data = {"sub": str(user.id), "role": user.role.value}
+    role_str = str(user.role.value if hasattr(user.role, "value") else user.role).lower().split(".")[-1]
+    token_data = {"sub": str(user.id), "role": role_str}
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)
     _set_auth_cookies(response, access_token, refresh_token)
-    return TokenResponse(access_token=access_token)
+    return TokenResponse(
+        access_token=access_token,
+        must_change_password=user.must_change_password,
+    )
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -195,11 +224,15 @@ async def refresh(request: Request, response: Response, db: AsyncSession = Depen
         _clear_auth_cookies(response)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
 
-    token_data = {"sub": str(user.id), "role": user.role.value}
+    role_str = str(user.role.value if hasattr(user.role, "value") else user.role).lower().split(".")[-1]
+    token_data = {"sub": str(user.id), "role": role_str}
     new_access = create_access_token(token_data)
     new_refresh = create_refresh_token(token_data)
     _set_auth_cookies(response, new_access, new_refresh)
-    return TokenResponse(access_token=new_access)
+    return TokenResponse(
+        access_token=new_access,
+        must_change_password=user.must_change_password,
+    )
 
 
 @router.post("/logout", response_model=MessageResponse)
@@ -261,12 +294,76 @@ async def change_password(
     body: ChangePasswordRequest, current_user: CurrentUser, db: AsyncSession = Depends(get_db)
 ) -> MessageResponse:
     """Change current user's password. Requires the current password."""
-    if not verify_password(body.current_password, current_user.hashed_password):
+    if not await async_verify_password(body.current_password, current_user.hashed_password):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect.")
     repo = UserRepository(db)
     await repo.update(current_user, hashed_password=hash_password(body.new_password), must_change_password=False)
     log_security_event("PASSWORD_CHANGED", user_id=str(current_user.id))
     return MessageResponse(message="Password changed successfully.")
+
+
+@router.post("/mfa/recover", response_model=TokenResponse)
+@limiter.limit("5/minute")
+async def recover_mfa(
+    request: Request,
+    response: Response,
+    body: RecoveryLoginRequest,
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    """C1: Login using a one-time recovery code when TOTP is unavailable.
+
+    Requires the mfa_pending signed cookie (issued during the password step)
+    so the user must still pass the password gate before using a recovery code.
+    The recovery code is burned (removed from the stored list) after use.
+    """
+    mfa_pending = request.cookies.get("mfa_pending")
+    if not mfa_pending:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No pending MFA session.")
+
+    from jose import JWTError
+    try:
+        uid = decode_mfa_pending_token(mfa_pending)
+    except (JWTError, ValueError, KeyError):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired MFA session.")
+
+    repo = UserRepository(db)
+    user = await repo.get_by_id(uid)
+    ip = request.client.host if request.client else "unknown"
+
+    if not user or not user.mfa_enabled or not user.mfa_recovery_codes:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="MFA recovery not available.")
+
+    import json
+    try:
+        hashed_codes: list[str] = json.loads(user.mfa_recovery_codes)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Recovery codes corrupted.")
+
+    # Check the submitted code against all stored hashes
+    matched_index = verify_recovery_code(body.recovery_code.strip().upper(), hashed_codes)
+    if matched_index is None:
+        log_security_event("MFA_RECOVERY_FAILED", user_id=str(uid), ip_address=ip)
+        await repo.increment_failed_login(user, settings.MAX_LOGIN_ATTEMPTS, settings.LOCKOUT_DURATION_MINUTES)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid recovery code.")
+
+    # Burn the used code so it cannot be replayed
+    hashed_codes.pop(matched_index)
+    await repo.update(user, mfa_recovery_codes=json.dumps(hashed_codes))
+    await repo.reset_failed_login(user)
+    log_security_event("MFA_RECOVERY_SUCCESS", user_id=str(uid), ip_address=ip)
+    response.delete_cookie("mfa_pending")
+
+    role_str = str(user.role.value if hasattr(user.role, "value") else user.role).lower().split(".")[-1]
+    token_data = {"sub": str(user.id), "role": role_str}
+    access_token = create_access_token(token_data)
+    refresh_token = create_refresh_token(token_data)
+    _set_auth_cookies(response, access_token, refresh_token)
+    return TokenResponse(
+        access_token=access_token,
+        must_change_password=user.must_change_password,
+    )
+
+
 
 
 @router.get("/me", response_model=dict)
@@ -276,6 +373,8 @@ async def get_me(current_user: CurrentUser) -> dict:
         "id": current_user.id,
         "email": current_user.email,
         "full_name": current_user.full_name,
-        "role": current_user.role,
+        "role": str(current_user.role.value if hasattr(current_user.role, "value") else current_user.role).lower().split(".")[-1],
+        "is_active": current_user.is_active,
         "mfa_enabled": current_user.mfa_enabled,
+        "must_change_password": current_user.must_change_password,
     }

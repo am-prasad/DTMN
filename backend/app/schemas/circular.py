@@ -1,4 +1,4 @@
-﻿"""Pydantic schemas for circulars."""
+"""Pydantic schemas for circulars."""
 from __future__ import annotations
 from datetime import date
 from typing import Optional
@@ -25,6 +25,8 @@ class CircularCreate(BaseModel):
     title: str = Field(min_length=3, max_length=400)
     description: Optional[str] = Field(default=None, max_length=10000)
     category: CircularCategory = CircularCategory.GENERAL
+    attachment_path: Optional[str] = None
+    attachment_filename: Optional[str] = None
     published_at: Optional[date] = None
     expires_at: Optional[date] = None
     is_published: bool = False
@@ -32,7 +34,7 @@ class CircularCreate(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def coerce_empty_strings(cls, values: dict) -> dict:
-        for f in ("description", "published_at", "expires_at"):
+        for f in ("description", "published_at", "expires_at", "attachment_path", "attachment_filename"):
             if isinstance(values.get(f), str) and values[f].strip() == "":
                 values[f] = None
         return values
@@ -42,6 +44,8 @@ class CircularUpdate(BaseModel):
     title: Optional[str] = Field(default=None, min_length=3, max_length=400)
     description: Optional[str] = Field(default=None, max_length=10000)
     category: Optional[CircularCategory] = None
+    attachment_path: Optional[str] = None
+    attachment_filename: Optional[str] = None
     published_at: Optional[date] = None
     expires_at: Optional[date] = None
     is_published: Optional[bool] = None
@@ -50,7 +54,7 @@ class CircularUpdate(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def coerce_empty_strings(cls, values: dict) -> dict:
-        for f in ("title", "description", "published_at", "expires_at"):
+        for f in ("title", "description", "published_at", "expires_at", "attachment_path", "attachment_filename"):
             if isinstance(values.get(f), str) and values[f].strip() == "":
                 values[f] = None
         return values

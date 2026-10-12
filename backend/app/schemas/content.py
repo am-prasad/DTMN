@@ -22,6 +22,12 @@ class GalleryImageOut(BaseModel):
     sort_order: int
 
 
+class GalleryImageCreate(BaseModel):
+    image_path: str
+    caption: Optional[str] = None
+    sort_order: int = 0
+
+
 class GalleryAlbumOut(BaseModel):
     model_config = {"from_attributes": True}
     id: int
@@ -182,7 +188,13 @@ class AdmissionEnquiryOut(BaseModel):
     section: str
     message: Optional[str]
     status: EnquiryStatus
+    notes: Optional[str] = None
     created_at: datetime
+
+
+class AdmissionEnquiryUpdate(BaseModel):
+    status: Optional[EnquiryStatus] = None
+    notes: Optional[str] = Field(default=None, max_length=5000)
 
 
 # ---------------------------------------------------------------------------
@@ -210,6 +222,22 @@ class ContactSubmissionCreate(BaseModel):
     phone: Optional[str] = Field(default=None, max_length=30, pattern=r"^[\d\+\-\(\)\s]*$")
     subject: str = Field(min_length=3, max_length=300)
     message: str = Field(min_length=10, max_length=5000)
+
+
+class ContactSubmissionOut(BaseModel):
+    model_config = {"from_attributes": True}
+    id: int
+    name: str
+    email: str
+    phone: Optional[str] = None
+    subject: str
+    message: str
+    is_read: bool
+    created_at: datetime
+
+
+class ContactSubmissionUpdate(BaseModel):
+    is_read: Optional[bool] = None
 
 
 # ---------------------------------------------------------------------------

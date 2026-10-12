@@ -10,13 +10,17 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
+kwargs = {"echo": settings.DEBUG, "pool_pre_ping": True}
+if not settings.DATABASE_URL.startswith("sqlite"):
+    kwargs.update(
+        pool_size=10,
+        max_overflow=20,
+        pool_recycle=3600,  # Recycle connections every hour (prevents MySQL "gone away" errors)
+    )
+
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=settings.DEBUG,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-    pool_recycle=3600,  # Recycle connections every hour (prevents MySQL "gone away" errors)
+    **kwargs,
 )
 
 AsyncSessionLocal = async_sessionmaker(

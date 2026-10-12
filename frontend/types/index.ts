@@ -207,6 +207,7 @@ export interface AdmissionEnquiry {
   section: string;
   message?: string;
   status: string;
+  notes?: string;
   created_at: string;
 }
 
@@ -230,6 +231,17 @@ export interface ContactForm {
   message: string;
 }
 
+export interface ContactSubmission {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string;
+  subject: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
 // ---------------------------------------------------------------------------
 
 export interface AdminUser {
@@ -249,6 +261,15 @@ export interface AdminStats {
   total_faculty: number;
   gallery_albums: number;
   admission_enquiries: number;
+  events?: { total: number; drafts: number; upcoming: number; past: number };
+  circulars?: { published: number; drafts: number; expiring_7d: number };
+  activities?: { published: number; drafts: number };
+  faculty?: { active: number; inactive: number };
+  gallery?: { published: number; empty_albums: number };
+  enquiries?: { new: number; total: number };
+  contact?: { unread: number };
+  attention?: { type: string; resource: string; id: number; label: string }[];
+  recent?: { action: string; user: string; resource: string; at: string }[];
 }
 
 export interface AuditLog {

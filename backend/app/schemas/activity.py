@@ -1,4 +1,4 @@
-﻿"""Pydantic schemas for activities."""
+"""Pydantic schemas for activities."""
 from __future__ import annotations
 from datetime import date
 from typing import Optional
@@ -10,6 +10,10 @@ class ActivityCategoryOut(BaseModel):
     id: int
     name: str
     slug: str
+
+
+class ActivityCategoryCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
 
 
 class ActivityImageOut(BaseModel):

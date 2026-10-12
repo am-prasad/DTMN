@@ -12,8 +12,8 @@ from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.deps import require_content_admin
-from app.models.faculty import AcademicSectionSlug, Faculty
-from app.schemas.faculty import FacultyCreate, FacultyOut, FacultyUpdate
+from app.models.faculty import AcademicSectionSlug, Department, Faculty
+from app.schemas.faculty import DepartmentCreate, DepartmentOut, FacultyCreate, FacultyOut, FacultyUpdate
 from app.schemas.bulk import BulkActionRequest, BulkActionResponse
 
 router = APIRouter(tags=["Faculty"])
@@ -84,14 +84,14 @@ async def update_faculty(faculty_id: int, body: FacultyUpdate, db: AsyncSession 
 
 
 @router.delete("/admin/faculty/{faculty_id}", response_model=dict, dependencies=[Depends(require_content_admin())])
-async def deactivate_faculty(faculty_id: int, db: AsyncSession = Depends(get_db)) -> dict:
+async def delete_faculty(faculty_id: int, db: AsyncSession = Depends(get_db)) -> dict:
     result = await db.execute(select(Faculty).where(Faculty.id == faculty_id))
     faculty = result.scalar_one_or_none()
     if not faculty:
         raise HTTPException(status_code=404, detail="Faculty not found.")
-    faculty.is_active = False
+    await db.delete(faculty)
     await db.commit()
-    return {"message": "Faculty member deactivated."}
+    return {"message": "Faculty member deleted successfully."}
 
 
 @router.post("/admin/faculty/bulk", response_model=BulkActionResponse, dependencies=[Depends(require_content_admin())])
@@ -108,8 +108,46 @@ async def bulk_action_faculty(
     for member in members:
         if body.action == "activate":
             member.is_active = True
-        elif body.action in ("deactivate", "delete"):
+        elif body.action == "deactivate":
             member.is_active = False
+        elif body.action == "delete":
+            await db.delete(member)
     await db.commit()
     return BulkActionResponse(affected=len(members), action=body.action, message=f"{len(members)} faculty member(s) updated.")
+
+
+# ---------------------------------------------------------------------------
+# Departments CRUD
+# ---------------------------------------------------------------------------
+@router.get("/departments", response_model=list[DepartmentOut])
+async def list_departments(
+    section: Optional[AcademicSectionSlug] = Query(None),
+    db: AsyncSession = Depends(get_db),
+) -> list[DepartmentOut]:
+    q = select(Department)
+    if section:
+        q = q.where(Department.section == section)
+    q = q.order_by(Department.name.asc())
+    result = await db.execute(q)
+    return list(result.scalars().all())
+
+
+@router.post("/admin/departments", response_model=DepartmentOut, status_code=201, dependencies=[Depends(require_content_admin())])
+async def create_department(body: DepartmentCreate, db: AsyncSession = Depends(get_db)) -> DepartmentOut:
+    dept = Department(name=body.name, section=body.section)
+    db.add(dept)
+    await db.commit()
+    await db.refresh(dept)
+    return dept
+
+
+@router.delete("/admin/departments/{department_id}", dependencies=[Depends(require_content_admin())])
+async def delete_department(department_id: int, db: AsyncSession = Depends(get_db)) -> dict:
+    result = await db.execute(select(Department).where(Department.id == department_id))
+    dept = result.scalar_one_or_none()
+    if not dept:
+        raise HTTPException(status_code=404, detail="Department not found.")
+    await db.delete(dept)
+    await db.commit()
+    return {"message": "Department deleted."}
 

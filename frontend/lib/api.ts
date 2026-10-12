@@ -4,9 +4,10 @@
  * API URL is read from environment variables — never hardcoded.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1`
-  : "/api/v1";
+const API_BASE =
+  typeof window !== "undefined"
+    ? "/api/v1"
+    : `${process.env.BACKEND_URL || "http://127.0.0.1:8000"}/api/v1`;
 
 type RequestOptions = {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
@@ -27,7 +28,7 @@ class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+async function request<T>(path: string, options: RequestOptions = {}, _retried = false): Promise<T> {
   const { method = "GET", body, headers = {}, cache, tags, revalidate } = options;
 
   const fetchOptions: RequestInit = {
@@ -49,6 +50,24 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   const res = await fetch(`${API_BASE}${path}`, fetchOptions);
 
+  // C4: On 401, attempt a silent token refresh then retry the original request.
+  // Auth endpoints are excluded to avoid infinite loops.
+  if (res.status === 401 && !_retried && !path.startsWith("/auth/")) {
+    const refreshed = await fetch(`${API_BASE}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (refreshed.ok) {
+      // Retry the original request with the new access token cookie
+      return request<T>(path, options, true);
+    }
+    // Refresh failed — session is dead; redirect to login (client side only)
+    if (typeof window !== "undefined") {
+      window.location.href = `/admin/login?from=${encodeURIComponent(window.location.pathname)}`;
+    }
+    throw new ApiError(401, "Session expired. Please log in again.");
+  }
+
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;
     try {
@@ -64,6 +83,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
   return undefined as T;
 }
+
+
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -168,7 +189,16 @@ export const api = {
     logout: () => request("/auth/logout", { method: "POST" }),
     me: () => request<import("@/types").AdminUser>("/auth/me"),
     refresh: () => request("/auth/refresh", { method: "POST" }),
+    // C1: Complete the MFA flow — call after login returns requires_mfa=true
+    verifyMfa: (code: string) =>
+      request("/auth/mfa/verify", { method: "POST", body: { code } }),
+    // C1: Allow login via one-time recovery code when TOTP is unavailable
+    recoverMfa: (recovery_code: string) =>
+      request("/auth/mfa/recover", { method: "POST", body: { recovery_code } }),
+    changePassword: (current_password: string, new_password: string) =>
+      request("/auth/password/change", { method: "POST", body: { current_password, new_password } }),
   },
+
 
   // Admin
   admin: {
@@ -200,8 +230,23 @@ export const api = {
 
     // Gallery
     listAlbums: () => request<import("@/types").GalleryAlbumListItem[]>("/admin/gallery"),
+    getAlbum: (id: number) => request<import("@/types").GalleryAlbum>(`/admin/gallery/${id}`),
     createAlbum: (data: unknown) => request("/admin/gallery", { method: "POST", body: data }),
     updateAlbum: (id: number, data: unknown) => request(`/admin/gallery/${id}`, { method: "PATCH", body: data }),
+    deleteAlbum: (id: number) => request(`/admin/gallery/${id}`, { method: "DELETE" }),
+    uploadAlbumImage: async (albumId: number, file: File, caption?: string) => {
+      const form = new FormData();
+      form.append("file", file);
+      if (caption) form.append("caption", caption);
+      const res = await fetch(`${API_BASE}/admin/gallery/${albumId}/images`, {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      if (!res.ok) throw new ApiError(res.status, "Image upload failed");
+      return res.json();
+    },
+    deleteAlbumImage: (imageId: number) => request(`/admin/gallery/images/${imageId}`, { method: "DELETE" }),
 
     // Facilities
     listFacilities: () => request<import("@/types").Facility[]>("/admin/facilities"),
@@ -218,6 +263,35 @@ export const api = {
       request(`/admin/admissions/${slug}`, { method: "PATCH", body: data }),
     listEnquiries: (page = 1) =>
       request<import("@/types").AdmissionEnquiry[]>(`/admin/admissions/enquiries?page=${page}`),
+    updateEnquiry: (id: number, data: { status?: string; notes?: string }) =>
+      request<import("@/types").AdmissionEnquiry>(`/admin/admissions/enquiries/${id}`, { method: "PATCH", body: data }),
+
+    // Contact Submissions
+    listContactSubmissions: (page = 1, is_read?: boolean) =>
+      request<import("@/types").ContactSubmission[]>(
+        `/admin/contact-submissions?page=${page}${is_read !== undefined ? `&is_read=${is_read}` : ""}`
+      ),
+    updateContactSubmission: (id: number, data: { is_read?: boolean }) =>
+      request<import("@/types").ContactSubmission>(`/admin/contact-submissions/${id}`, { method: "PATCH", body: data }),
+    deleteContactSubmission: (id: number) =>
+      request(`/admin/contact-submissions/${id}`, { method: "DELETE" }),
+
+    // Categories and Departments
+    listEventCategories: () => request<import("@/types").EventCategory[]>("/event-categories"),
+    createEventCategory: (data: { name: string }) =>
+      request<import("@/types").EventCategory>("/admin/event-categories", { method: "POST", body: data }),
+    deleteEventCategory: (id: number) => request(`/admin/event-categories/${id}`, { method: "DELETE" }),
+
+    listActivityCategories: () => request<import("@/types").ActivityCategory[]>("/activity-categories"),
+    createActivityCategory: (data: { name: string }) =>
+      request<import("@/types").ActivityCategory>("/admin/activity-categories", { method: "POST", body: data }),
+    deleteActivityCategory: (id: number) => request(`/admin/activity-categories/${id}`, { method: "DELETE" }),
+
+    listDepartments: (section?: string) =>
+      request<import("@/types").Department[]>(`/departments${section ? `?section=${section}` : ""}`),
+    createDepartment: (data: { name: string; section: string }) =>
+      request<import("@/types").Department>("/admin/departments", { method: "POST", body: data }),
+    deleteDepartment: (id: number) => request(`/admin/departments/${id}`, { method: "DELETE" }),
 
     // Content
     updateContent: (key: string, value: string) =>

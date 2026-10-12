@@ -22,8 +22,54 @@ from app.core.config import get_settings
 settings = get_settings()
 
 # ---------------------------------------------------------------------------
-# Password hashing — Argon2id
+# Helpers
 # ---------------------------------------------------------------------------
+
+def utcnow() -> datetime:
+    """Return current UTC time as a naive datetime (consistent with MySQL storage)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+# C3: Pre-compute a valid Argon2id hash at import time so that the timing-
+# equalisation call for unknown email addresses never raises ValueError.
+# (The old hand-written string was not a valid hash; passlib raised ValueError,
+# which became a 500 and also revealed which emails exist in the system.)
+DUMMY_HASH: str = ""  # filled below after pwd_context is defined
+
+
+# ---------------------------------------------------------------------------
+# MFA pending token helpers (C2)
+# ---------------------------------------------------------------------------
+_MFA_PENDING_TYPE = "mfa_pending"
+_MFA_PENDING_TTL = 300  # 5 minutes
+
+
+def create_mfa_pending_token(user_id: int) -> str:
+    """Issue a short-lived signed JWT for the MFA second-factor step.
+
+    Replaces the unsigned base64-JSON cookie that an attacker could forge
+    to skip the password step and attack any user's TOTP directly.
+    """
+    payload = {
+        "sub": str(user_id),
+        "type": _MFA_PENDING_TYPE,
+        "jti": secrets.token_hex(8),
+        "exp": datetime.now(timezone.utc) + timedelta(seconds=_MFA_PENDING_TTL),
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+def decode_mfa_pending_token(token: str) -> int:
+    """Decode and validate a MFA-pending token. Returns the user_id.
+
+    Raises JWTError if the token is invalid, expired, or wrong type.
+    """
+    payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+    if payload.get("type") != _MFA_PENDING_TYPE:
+        raise JWTError("Wrong token type")
+    return int(payload["sub"])
+
+
 pwd_context = CryptContext(
     schemes=["argon2"],
     deprecated="auto",
@@ -31,6 +77,10 @@ pwd_context = CryptContext(
     argon2__time_cost=3,
     argon2__parallelism=4,
 )
+
+# Populate DUMMY_HASH now that pwd_context exists (C3).
+# This is a real Argon2id hash so passlib never raises ValueError.
+DUMMY_HASH = pwd_context.hash("_dummy_timing_equalisation_password_")
 
 
 def hash_password(password: str) -> str:
@@ -41,6 +91,23 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plaintext password against its Argon2id hash."""
     return pwd_context.verify(plain_password, hashed_password)
+
+
+# H3: Argon2id (64 MiB, 3 passes) is CPU-heavy and blocks the asyncio event
+# loop if called directly from async handlers.  These async wrappers offload
+# the work to the default threadpool so other requests continue to be served.
+async def async_hash_password(password: str) -> str:
+    """Non-blocking Argon2id hash — runs in the default threadpool."""
+    from starlette.concurrency import run_in_threadpool
+    return await run_in_threadpool(hash_password, password)
+
+
+async def async_verify_password(plain: str, hashed: str) -> bool:
+    """Non-blocking Argon2id verify — runs in the default threadpool."""
+    from starlette.concurrency import run_in_threadpool
+    return await run_in_threadpool(verify_password, plain, hashed)
+
+
 
 
 def check_password_strength(password: str) -> list[str]:
@@ -120,7 +187,7 @@ def generate_totp_secret() -> str:
     return pyotp.random_base32()
 
 
-def get_totp_uri(secret: str, email: str, issuer: str = "[Institution Name]") -> str:
+def get_totp_uri(secret: str, email: str, issuer: str = "D T M N") -> str:
     """Return the otpauth:// URI for QR code generation."""
     totp = pyotp.TOTP(secret)
     return totp.provisioning_uri(name=email, issuer_name=issuer)
