@@ -154,11 +154,22 @@ async def admin_get_album(album_id: int, db: AsyncSession = Depends(get_db)) -> 
 
 
 @router.delete("/admin/gallery/{album_id}", response_model=dict, dependencies=[Depends(require_content_admin())])
-async def delete_album(album_id: int, db: AsyncSession = Depends(get_db)) -> dict:
-    result = await db.execute(select(GalleryAlbum).where(GalleryAlbum.id == album_id))
+async def delete_album(
+    album_id: int,
+    db: AsyncSession = Depends(get_db),
+    storage: StorageService = Depends(get_storage),
+) -> dict:
+    result = await db.execute(
+        select(GalleryAlbum).options(selectinload(GalleryAlbum.images)).where(GalleryAlbum.id == album_id)
+    )
     album = result.scalar_one_or_none()
     if not album:
         raise HTTPException(status_code=404, detail="Album not found.")
+    for img in album.images:
+        try:
+            storage.delete_file(img.image_path)
+        except Exception:
+            pass
     await db.delete(album)
     await db.commit()
     return {"message": "Gallery album deleted successfully."}
@@ -195,11 +206,19 @@ async def add_album_image(
 
 
 @router.delete("/admin/gallery/images/{image_id}", response_model=dict, dependencies=[Depends(require_content_admin())])
-async def delete_album_image(image_id: int, db: AsyncSession = Depends(get_db)) -> dict:
+async def delete_album_image(
+    image_id: int,
+    db: AsyncSession = Depends(get_db),
+    storage: StorageService = Depends(get_storage),
+) -> dict:
     result = await db.execute(select(GalleryImage).where(GalleryImage.id == image_id))
     img = result.scalar_one_or_none()
     if not img:
         raise HTTPException(status_code=404, detail="Image not found.")
+    try:
+        storage.delete_file(img.image_path)
+    except Exception:
+        pass
     await db.delete(img)
     await db.commit()
     return {"message": "Image deleted successfully."}

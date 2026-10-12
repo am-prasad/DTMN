@@ -337,11 +337,16 @@ export const api = {
 export { ApiError };
 
 // ---------------------------------------------------------------------------
-// Utility: build image URL from stored relative path
+// Utility: build image / media URL from stored relative path
 // ---------------------------------------------------------------------------
+export function mediaUrl(path?: string | null): string {
+  if (!path) return "";
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  const clean = path.replace(/^\/?(uploads\/)?/, "");
+  return `/uploads/${clean}`;
+}
+
 export function getImageUrl(path?: string | null): string | undefined {
   if (!path) return undefined;
-  if (path.startsWith("http")) return path;
-  const base = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
-  return `${base}/uploads/${path}`;
+  return mediaUrl(path);
 }
