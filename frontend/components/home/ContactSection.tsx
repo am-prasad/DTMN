@@ -25,14 +25,14 @@ export function ContactSection() {
                 {
                   icon: Phone,
                   label: "Telephone",
-                  content: "[Phone Number]",
-                  href: "tel:[Phone Number]",
+                  content: "08223-275385",
+                  href: "tel:08223-275385",
                 },
                 {
                   icon: Mail,
                   label: "Email",
-                  content: "[info@example.com]",
-                  href: "mailto:[info@example.com]",
+                  content: "dtmnhs@gmail.com",
+                  href: "mailto:dtmnhs@gmail.com",
                 },
                 {
                   icon: Clock,
