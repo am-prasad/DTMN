@@ -186,14 +186,7 @@ async def seed(db: AsyncSession) -> None:
         obj, _ = await get_or_create(db, Department, name=d_name, section=d_section)
         dept_objs.append(obj)
 
-    faculty_members = [
-        ("[Faculty Member A]", "Senior Teacher", "M.Sc. Physics, B.Ed.", 12, "[Faculty Member A] has been teaching Physics at [Institution Name] for over a decade. Known for making complex concepts accessible to students.", AcademicSectionSlug.HIGH_SCHOOL, dept_objs[0].id, 1),
-        ("[Faculty Member B]", "Mathematics Teacher", "M.Sc. Mathematics, B.Ed.", 8, "[Faculty Member B] specialises in making mathematics intuitive and engaging for students of all abilities.", AcademicSectionSlug.HIGH_SCHOOL, dept_objs[1].id, 2),
-        ("[Faculty Member C]", "English Teacher", "M.A. English Literature, B.Ed.", 10, "[Faculty Member C] brings literature to life in the classroom, fostering a love of reading and strong writing skills.", AcademicSectionSlug.HIGH_SCHOOL, dept_objs[2].id, 3),
-        ("[Faculty Member D]", "Commerce Lecturer", "M.Com., B.Ed.", 6, "[Faculty Member D] guides College Commerce students through Accountancy and Business Studies with a practical, industry-oriented approach.", AcademicSectionSlug.COLLEGE, dept_objs[4].id, 1),
-        ("[Faculty Member E]", "Class Teacher – Nursery", "B.Ed. (Early Childhood Education)", 5, "[Faculty Member E] creates a warm and stimulating environment where Nursery children develop confidence through play and structured activities.", AcademicSectionSlug.NURSERY, None, 1),
-        ("[Faculty Member F]", "Class Teacher – Primary IV", "B.Sc., B.Ed.", 7, "[Faculty Member F] is dedicated to building strong academic foundations with an emphasis on curiosity and independent thinking.", AcademicSectionSlug.PRIMARY, None, 1),
-    ]
+    faculty_members =[]
     for name, desig, qual, exp, bio, sec, dept_id, sort_order in faculty_members:
         await get_or_create(
             db,
